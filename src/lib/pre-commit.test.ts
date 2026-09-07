@@ -1,5 +1,5 @@
 import { parseDocument } from 'yaml';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import {
   applyExtend,
   ExtendError,
@@ -166,6 +166,15 @@ describe('renderConfig', () => {
 });
 
 describe('preCommitVars', () => {
+  const savedBin = process.env['DEV_BIN'];
+  beforeEach(() => {
+    delete process.env['DEV_BIN'];
+  });
+  afterEach(() => {
+    if (savedBin !== undefined) process.env['DEV_BIN'] = savedBin;
+    else delete process.env['DEV_BIN'];
+  });
+
   it('calls the binary in place when the package is the repository root', () => {
     const vars = preCommitVars('.');
 
@@ -186,6 +195,15 @@ describe('preCommitVars', () => {
 });
 
 describe('renderConfig for a nested package', () => {
+  const savedBin = process.env['DEV_BIN'];
+  beforeEach(() => {
+    delete process.env['DEV_BIN'];
+  });
+  afterEach(() => {
+    if (savedBin !== undefined) process.env['DEV_BIN'] = savedBin;
+    else delete process.env['DEV_BIN'];
+  });
+
   it('points the local hooks at the package, not the git root', async () => {
     const out = await renderConfig(undefined, 'once-org');
 
