@@ -97,6 +97,12 @@ repos:
         stages: [pre-push]
         args: [--quiet, --compact]
 
+  # GitHub Actions workflow linting. Fast enough for the commit stage.
+  - repo: https://github.com/rhysd/actionlint
+    rev: '{{actionlintRev}}'
+    hooks:
+      - id: actionlint
+
   # The Once toolchain. These call the `dev` CLI, so they always use the
   # TypeScript, Vitest and oxlint versions platform-pkg-dev pins.
   #

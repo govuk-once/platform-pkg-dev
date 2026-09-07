@@ -1,0 +1,51 @@
+name: CDK PR
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.ts'
+      - '**.json'
+      - '**.mts'
+      - 'lib/**'
+      - '.github/**.yaml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-cdk:
+    name: Run CDK Unit Tests and Validation
+    environment: development
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout-code
+        uses: actions/checkout@v6
+
+      - name: Configure Aws Credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.DEPLOYMENT_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: GH-Actions-Tag-Pipeline
+
+      - name: Setup Node/PNPM
+        uses: pnpm/setup@v2
+        with:
+          install: false
+          runtime: node@24
+
+      - name: Configure CodeArtifact auth
+        id: ca
+        uses: govuk-once/platform-actions/.github/actions/codeartifact-auth@fa3a856eb7285b0624cdfdcd436ef72fbf15547c # PR commit - brings in always-auth
+        with:
+          role-to-assume: ${{ vars.DEPLOYMENT_ROLE_ARN }}
+
+      - name: Install dependencies
+        run: 'pnpm install --frozen-lockfile'
+
+      - name: Spellcheck
+        run: 'pnpm run spg'
+
+      - name: Run Tests
+        run: 'pnpm run test'

@@ -19,6 +19,7 @@ export const MANAGED_REPOS: readonly { readonly url: string; readonly key: strin
   { url: 'https://github.com/Yelp/detect-secrets', key: 'detect-secrets' },
   { url: 'https://github.com/semgrep/semgrep', key: 'semgrep' },
   { url: 'https://github.com/bridgecrewio/checkov', key: 'checkov' },
+  { url: 'https://github.com/rhysd/actionlint', key: 'actionlint' },
 ];
 
 /**
@@ -40,6 +41,7 @@ export function preCommitVars(packageDir: PackageDir = '.'): Record<string, stri
     detectSecretsRev: revOf('detect-secrets'),
     semgrepRev: revOf('semgrep'),
     checkovRev: revOf('checkov'),
+    actionlintRev: revOf('actionlint'),
 
     // Direct binary, not `pnpm exec`: hooks run from the git root, which in a
     // monorepo has no package.json for corepack to read a pnpm version from.

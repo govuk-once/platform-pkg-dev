@@ -1,0 +1,38 @@
+name: Publish Tag Helpers (@next/development)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**.ts'
+      - '**.json'
+      - '.github/**.yaml'
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    name: Publish Tag Helpers
+    environment: development
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node/PNPM
+        uses: pnpm/setup@v2
+        with:
+          install: false
+          runtime: node@24
+
+      - name: Configure CodeArtifact auth
+        id: code-artifact-auth
+        uses: govuk-once/platform-actions/.github/actions/codeartifact-auth@fa3a856eb7285b0624cdfdcd436ef72fbf15547c # PR commit - brings in always-auth
+        with:
+          role-to-assume: ${{ vars.DEPLOYMENT_ROLE_ARN }}
+
+      - name: Install Deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish Package to CodeArtifact
+        run: pnpm publish --no-git-checks --tag next
