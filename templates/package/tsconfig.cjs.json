@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Explicitly CommonJS, not NodeNext. NodeNext takes the output format from
+    // the package's own `type` field, which is "module" - so it would emit ESM
+    // into dist/cjs and `require()` would fail on it.
+    //
+    // moduleResolution must change with it: NodeNext resolution is only valid
+    // alongside module NodeNext, and node10 was removed in TypeScript 7. This
+    // pass only emits - the ESM pass still type-checks under NodeNext, so
+    // missing file extensions are still caught.
+    "module": "CommonJS",
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": false,
+    "outDir": "dist/cjs",
+    "declarationDir": "dist/cjs"
+  }
+}

@@ -1,0 +1,4 @@
+#!/bin/sh
+DEV_PACKAGE_DIR=$(cd "$(dirname "$0")/.." && pwd)
+export DEV_PACKAGE_DIR
+DEV_BIN="$DEV_PACKAGE_DIR/dist/cli.js" exec "$DEV_PACKAGE_DIR/hooks/dev-hook" pre-push "$@"

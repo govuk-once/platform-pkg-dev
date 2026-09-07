@@ -1,0 +1,65 @@
+{
+  "name": "platform-pkg-dev",
+  "version": "0.0.1",
+  "description": "Core development tooling for the Once platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
+  "license": "MIT",
+  "bin": {
+    "dev": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "hooks",
+    "tsconfig.base.json",
+    "oxlint.base.json",
+    "versions.json",
+    "start.sh",
+    "VERSION"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./package.json": "./package.json",
+    "./oxlint.base.json": "./oxlint.base.json",
+    "./vitest": {
+      "types": "./dist/vitest.d.ts",
+      "import": "./dist/vitest.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';writeFileSync('VERSION',JSON.parse(readFileSync('package.json','utf8')).version+'\\n')\"",
+    "build:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "pnpm run build",
+    "test": "vitest run",
+    "pretest:watch": "pnpm run build",
+    "test:watch": "vitest",
+    "lint": "oxlint --type-aware",
+    "format": "oxfmt",
+    "pre-commit": "DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-commit",
+    "pre-push": "DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-push",
+    "postinstall": "node dist/cli.js hooks install 2>/dev/null || true",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@types/node": "24.13.3",
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10",
+    "yaml": "2.9.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.34.5",
+  "once": {
+    "team": "platform"
+  }
+}

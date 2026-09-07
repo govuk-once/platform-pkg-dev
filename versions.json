@@ -1,0 +1,37 @@
+{
+  "$comment": "Single source of truth for every version platform-pkg-dev pins. Edit here, then release platform-pkg-dev and run `dev sync` in each package.",
+  "node": 24,
+  "$packageManagerComment": "Must be at least 10.26.1. pnpm 10.26.0 shipped two days before pnpm/pnpm#10327 landed, and without that fix blockExoticSubdeps misreads any subdependency with a wildcard `*` specifier as exotic - which vitest has several of. It failed installs with 'resolved via undefined' and sometimes a package name that does not exist.",
+  "packageManager": "pnpm@10.34.5",
+  "versions": {
+    "typescript": "7.0.2",
+    "vitest": "4.1.10",
+    "oxlint": "1.78.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "oxfmt": "0.63.0",
+    "yaml": "2.9.0",
+    "@types/node": "24.13.3",
+    "aws-cdk-lib": "2.265.0",
+    "constructs": "10.8.1",
+    "aws-cdk": "2.1136.0"
+  },
+  "$toolsComment": "The only external executable a developer installs. pre-commit then installs every hook below into its own isolated environment at the pinned rev, so semgrep, checkov and detect-secrets never need to be on PATH.",
+  "tools": {
+    "pre-commit": "4.6.2"
+  },
+  "$hookRevsComment": "Hook repo revisions for .pre-commit-config.yaml. The rev is the version. Do not run `pre-commit autoupdate` - bump here and run `dev sync`.",
+  "hookRevs": {
+    "pre-commit-hooks": "v6.0.0",
+    "detect-secrets": "v1.5.0",
+    "semgrep": "v1.174.0",
+    "checkov": "3.3.13"
+  },
+  "$versionUrlComment": "Where `dev sync` looks for the latest platform-pkg-dev version: a plain-text file containing just the version, served next to start.sh. Override with DEV_VERSION_URL. Set to null to disable the check.",
+  "versionUrl": "https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/VERSION",
+  "$workspaceSettingsComment": "Supply-chain settings platform-pkg-dev owns in each package pnpm-workspace.yaml. minimumReleaseAge is in MINUTES (10080 = 7 days): pnpm refuses any release younger than that, which is the window most malicious publishes are caught in. Note this constrains platform-pkg-dev itself - every version pinned above must be at least that old, including the platform binaries published alongside tools like oxlint, or a package cannot install its own toolchain.",
+  "workspaceSettings": {
+    "minimumReleaseAge": 10080,
+    "blockExoticSubdeps": true,
+    "trustPolicy": "no-downgrade"
+  }
+}

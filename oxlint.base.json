@@ -1,0 +1,51 @@
+// Shared lint rules for every Once package, alongside tsconfig.base.json.
+// Packages extend this from their own .oxlintrc.json rather than copying it,
+// so rules stay centrally owned and move in one place.
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "promise", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn",
+    "pedantic": "off",
+    "style": "off"
+  },
+  "rules": {
+    "eqeqeq": ["error", "always"],
+    "no-console": "warn",
+    "no-debugger": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "promise/no-return-wrap": "error",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/no-duplicate-type-constituents": "off",
+    "eslint/no-await-in-loop": "off",
+    "unicorn/consistent-function-scoping": "off",
+    // CDK constructs register themselves with their parent in the
+    // constructor, so `new Bucket(this, 'X')` for its side effect is the
+    // framework's core idiom rather than a mistake. Leaving this on forces a
+    // variable that no-unused-vars then objects to.
+    "no-new": "off",
+    // Directly contradicts no-unused-vars, whose own help text says unused
+    // variables should start with `_`. Leaving both on means a deliberately
+    // unused binding cannot be written at all.
+    "no-underscore-dangle": "off"
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", "cdk.out/**", "coverage/**"],
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts"],
+      "rules": {
+        "no-console": "off",
+        "typescript/no-explicit-any": "off",
+        "typescript/no-non-null-assertion": "off",
+        // `expect(obj.method).toBeDefined()` references a method without
+        // calling it, which is how assertion libraries are written - the rule
+        // cannot tell that from a genuinely unbound call site.
+        "typescript/unbound-method": "off"
+      }
+    }
+  ]
+}

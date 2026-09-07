@@ -1,0 +1,6 @@
+// Rules live in platform-pkg-dev/oxlint.base.json so they can be updated centrally.
+// Add package-specific overrides below.
+{
+  "extends": ["./node_modules/platform-pkg-dev/oxlint.base.json"],
+  "rules": {}
+}

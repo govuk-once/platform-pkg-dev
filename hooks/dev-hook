@@ -1,0 +1,84 @@
+#!/bin/sh
+# Managed by platform-pkg-dev. The committed .githooks/* scripts are two-line shims that
+# call this, so hook logic ships with platform-pkg-dev and `dev sync` cannot leave a
+# package running a stale copy of it.
+#
+# Usage: dev-hook <pre-commit|pre-push> [git's own hook arguments]
+#   DEV_PACKAGE_DIR  absolute package root, set by the shim from its own path
+set -eu
+
+HOOK="${1:?platform-pkg-dev: hook type required}"
+shift
+
+# git runs hooks from the repository root, which in a monorepo is above the
+# package - and is where pre-commit would otherwise look for the config.
+cd "${DEV_PACKAGE_DIR:-.}"
+
+BIN="${DEV_BIN:-./node_modules/.bin/dev}"
+
+if [ ! -f "$BIN" ]; then
+  echo "platform-pkg-dev: $BIN not found." >&2
+  echo "platform-pkg-dev: run 'pnpm install' in $(pwd) first." >&2
+  exit 1
+fi
+
+if [ "$(git config --get commit.gpgsign)" != "true" ]; then
+  echo "platform-pkg-dev: commit signing is not enabled - $HOOK blocked." >&2
+  echo "platform-pkg-dev: run 'pnpm dev hooks install' to configure it." >&2
+  exit 1
+fi
+
+if ! command -v pre-commit >/dev/null 2>&1; then
+  echo "platform-pkg-dev: pre-commit is not installed - the $HOOK hook cannot run." >&2
+  echo "platform-pkg-dev: run 'pnpm dev doctor' to see the pinned version to install." >&2
+  exit 1
+fi
+
+# Checked before handing off, not as a hook inside the chain: pre-commit reads
+# .pre-commit-config.yaml up front, so a stale config would run the wrong hooks
+# and only report itself out of date afterwards.
+#
+# Skipped when DEV_BIN is set: that means this is platform-pkg-dev itself, which
+# is the source of the pins rather than a consumer of them.
+if [ -z "${DEV_BIN:-}" ]; then
+  if ! "$BIN" sync --check; then
+    echo "platform-pkg-dev: managed files are out of date - running 'dev sync'." >&2
+    if ! "$BIN" sync --no-install; then
+      echo "platform-pkg-dev: 'dev sync' failed - $HOOK blocked." >&2
+      exit 1
+    fi
+    # Stage whatever sync touched so the commit includes the updates.
+    git add -u
+  fi
+fi
+
+# pre-commit installs every hook in .pre-commit-config.yaml into its own
+# isolated environment at a pinned revision, so semgrep, checkov and
+# detect-secrets are never installed globally and cannot drift.
+# Package-specific checks, run last so a failure there is not buried under the
+# framework's output - and only once the shared chain has passed, since there is
+# no point running bespoke checks over code that already failed the standard
+# ones. Absent means nothing to do.
+EXTEND="${DEV_HOOK_DIR:-.githooks}/$HOOK.extend.sh"
+
+if ! pre-commit hook-impl \
+  --config=.pre-commit-config.yaml \
+  --hook-type="$HOOK" \
+  --hook-dir "${DEV_HOOK_DIR:-.githooks}" \
+  -- "$@"
+then
+  # Say so explicitly: a skipped extend script looks identical to one that never
+  # ran at all, and "why didn't my hook run" is a miserable thing to debug.
+  if [ -f "$EXTEND" ]; then
+    echo "platform-pkg-dev: shared $HOOK checks failed - $EXTEND was not run." >&2
+  fi
+  exit 1
+fi
+
+if [ -f "$EXTEND" ]; then
+  echo "platform-pkg-dev: running $EXTEND"
+  if ! sh "$EXTEND" "$@"; then
+    echo "platform-pkg-dev: $EXTEND failed - $HOOK blocked." >&2
+    exit 1
+  fi
+fi
