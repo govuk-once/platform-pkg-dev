@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
       oxfmt:
         specifier: 0.63.0
         version: 0.63.0
@@ -1082,6 +1079,7 @@ snapshots:
   '@types/node@24.13.3':
     dependencies:
       undici-types: 7.18.2
+    optional: true
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
@@ -1397,7 +1395,8 @@ snapshots:
       '@typescript/typescript-win32-arm64': 7.0.2
       '@typescript/typescript-win32-x64': 7.0.2
 
-  undici-types@7.18.2: {}
+  undici-types@7.18.2:
+    optional: true
 
   vite@8.2.2(@types/node@24.13.3)(yaml@2.9.0):
     dependencies:

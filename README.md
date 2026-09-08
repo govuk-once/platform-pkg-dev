@@ -16,7 +16,7 @@ not installed until a `package.json` exists that depends on it. `start.sh`
 closes that loop:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir once-foo --name once-foo --team identity
+curl -H "Authorization: token $GITHUB_TOKEN" -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir once-foo --name once-foo --team identity
 ```
 
 It checks Node, pins pnpm through corepack, writes a throwaway `package.json`,
