@@ -21,7 +21,7 @@ set -eu
 # local checkout before platform-pkg-dev is published. The defaults are the real pins,
 # and platform-pkg-dev's test suite checks them against versions.json.
 NODE_MAJOR=${NODE_MAJOR:-24}
-PNPM=${PNPM:-pnpm@11.25.0"}
+PNPM=${PNPM:-pnpm@11.25.0}
 PKG_DEV=${PKG_DEV:-^0.0.1}
 
 fail() { echo "platform-pkg-dev: $1" >&2; exit 1; }
