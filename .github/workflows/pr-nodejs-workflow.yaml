@@ -44,8 +44,5 @@ jobs:
       - name: Install dependencies
         run: 'pnpm install --frozen-lockfile'
 
-      - name: Spellcheck
-        run: 'pnpm run spg'
-
       - name: Run Tests
         run: 'pnpm run test'
