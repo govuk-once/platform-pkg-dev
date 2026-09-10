@@ -2,7 +2,7 @@
   "$comment": "Single source of truth for every version platform-pkg-dev pins. Edit here, then release platform-pkg-dev and run `dev sync` in each package.",
   "node": 24,
   "$packageManagerComment": "Must be at least 10.26.1. pnpm 10.26.0 shipped two days before pnpm/pnpm#10327 landed, and without that fix blockExoticSubdeps misreads any subdependency with a wildcard `*` specifier as exotic - which vitest has several of. It failed installs with 'resolved via undefined' and sometimes a package name that does not exist.",
-  "packageManager": "pnpm@10.34.5",
+  "packageManager": "pnpm@11.25.0",
   "versions": {
     "typescript": "7.0.2",
     "vitest": "4.1.10",
