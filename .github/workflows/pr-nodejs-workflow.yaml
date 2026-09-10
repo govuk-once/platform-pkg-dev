@@ -37,7 +37,7 @@ jobs:
 
       - name: Configure CodeArtifact auth
         id: ca
-        uses: govuk-once/platform-actions-codeartifact-login/.github/actions/codeartifact-auth@ce0d38a2fb22c5f6bd8b8764a1572fbc080a52d1
+        uses: govuk-once/platform-actions-codeartifact-login/.github/actions/codeartifact-auth@fa3a856eb7285b0624cdfdcd436ef72fbf15547c
         with:
           role-to-assume: ${{ vars.DEPLOYMENT_ROLE_ARN }}
 
