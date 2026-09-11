@@ -1,6 +1,6 @@
 {
   "name": "@govuk-connect/dev",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
   "bin": {
