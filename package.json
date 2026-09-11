@@ -1,5 +1,5 @@
 {
-  "name": "platform-pkg-dev",
+  "name": "@govuk-connect/dev",
   "version": "0.0.1",
   "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
@@ -32,7 +32,7 @@
     }
   },
   "publishConfig": {
-    "registry": "https://registry-prod-904690835784.d.codeartifact.eu-west-2.amazonaws.com/npm/registry-prod-repo/"
+    "registry": "https://registry-prod-904690835784.d.codeartifact.eu-west-2.amazonaws.com/npm/registry-prod-repo"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';writeFileSync('VERSION',JSON.parse(readFileSync('package.json','utf8')).version+'\\n')\"",
