@@ -17,6 +17,9 @@ default_install_hook_types:
 # overridden explicitly below.
 default_stages: [pre-commit]
 
+# Stop pre-commit on first failed hook
+fail_fast: true
+
 repos:
   # File hygiene and the cheap safety nets. All auto-fixing hooks come first so
   # later hooks see the corrected files.
