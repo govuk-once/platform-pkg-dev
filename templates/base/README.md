@@ -3,7 +3,7 @@
 Owned by **{{team}}**.
 
 Scaffolded by `dev init`. TypeScript, Vitest, oxlint and oxfmt versions are
-owned by the `platform-pkg-dev` package, so they stay consistent across every Once
+owned by the `platform-pkg-dev` package, so they stay consistent across every Connect
 package. `dev sync` keeps this package's pins matching it.
 
 ## Getting started

@@ -9,6 +9,7 @@ import {
   runTypecheck,
   runFormat,
   runWriteMarkers,
+  runSpell,
   type RunContext,
 } from './commands/run.js';
 import { runSync, SYNC_USAGE } from './commands/sync.js';
@@ -21,17 +22,17 @@ import { inspectEnvironment, reportPreflight } from './lib/preflight.js';
 import { bold, dim, error, fail, info } from './lib/log.js';
 import { resolveWorkingDir } from './lib/project.js';
 
-const USAGE = `${bold('dev')} - core tooling for Once packages, provided by platform-pkg-dev
+const USAGE = `${bold('dev')} - core tooling for Connect packages, provided by platform-pkg-dev
 
 Usage
   dev <command> [options]
 
 Commands
-  init         Scaffold a new Once package in the current directory
+  init         Scaffold a new Connect package in the current directory
   build        Compile with the pinned TypeScript (dual ESM/CJS when configured)
   test         Run Vitest once
   test:watch   Run Vitest in watch mode, re-running affected tests on save
-  lint         Run oxlint with the shared Once config (--fix to apply fixes)
+  lint         Run oxlint with the shared Connect config (--fix to apply fixes)
   format       Run oxfmt (--check to verify without writing)
   typecheck    Run tsc --noEmit
   sync         Enforce the dependency versions platform-pkg-dev pins (--check for CI)
@@ -41,6 +42,7 @@ Commands
   cdk:init     Scaffold the CDK app: cdk init, then platform-pkg-dev's stack on top
   synth        Assume the GDS role, then synthesise the CDK app
   scan         Synthesise, then run checkov over the templates
+  spell         Run CSpell to look for spelling issues
   doctor       Verify the pinned tool versions on this machine
   write-markers  Write the dist/esm and dist/cjs package.json type markers
                  (build does this for you after a successful dual build)
@@ -119,6 +121,7 @@ async function main(argv: readonly string[]): Promise<number> {
     case 'cdk:init':
     case 'synth':
     case 'scan':
+    case 'spell':
     case 'write-markers': {
       const { cwd, rest: toolArgs } = extractCwd(rest);
       const context: RunContext = { cwd: resolveWorkingDir(cwd) };
@@ -137,6 +140,7 @@ async function main(argv: readonly string[]): Promise<number> {
       if (command === 'pre-push') return await runPrePush(toolArgs, context);
       if (command === 'hooks') return await runHooks(toolArgs, context);
       if (command === 'doctor') return reportPreflight(inspectEnvironment()) ? 0 : 1;
+      if (command === 'spell') return runSpell(toolArgs, context);
       if (command === 'write-markers') return await runWriteMarkers(context);
       return runTypecheck(toolArgs, context);
     }

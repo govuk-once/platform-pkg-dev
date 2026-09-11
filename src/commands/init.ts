@@ -28,14 +28,14 @@ import { installDependencies } from '../lib/install.js';
 import { runTool } from '../lib/toolchain.js';
 import { renderWorkspaceFile, workspaceRootFor, WORKSPACE_FILE } from '../lib/workspace.js';
 
-export const INIT_USAGE = `${bold('dev init')} - scaffold a Once package
+export const INIT_USAGE = `${bold('dev init')} - scaffold a Connect package
 
 Usage
   dev init [options]
 
 Options
   --dir <path>       Target directory (default: current directory)
-  --name <name>      Package name, e.g. once-org
+  --name <name>      Package name, e.g. connect-org
   --team <team>      Owning team
   --pkg-dev <spec>   Dependency spec for platform-pkg-dev itself (default: ^<version>).
                      Use link:../platform-pkg-dev while platform-pkg-dev is unpublished.

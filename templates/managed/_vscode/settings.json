@@ -28,7 +28,7 @@
   "[json]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "[jsonc]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
 
-  // ESLint and Prettier are not used in Once packages.
+  // ESLint and Prettier are not used in Connect packages.
   "eslint.enable": false,
   "prettier.enable": false
 }

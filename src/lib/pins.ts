@@ -1,9 +1,16 @@
-import { CDK, NODE_MAJOR, PACKAGE_MANAGER, TYPES_NODE, versionOf } from '../versions.js';
+import {
+  CDK,
+  NODE_MAJOR,
+  PACKAGE_MANAGER,
+  TYPES_NODE,
+  PUBLISH_CONFIG_REGISTRY,
+  versionOf,
+} from '../versions.js';
 
 export type PinSection = 'dependencies' | 'devDependencies';
 
 /**
- * `core` pins apply to every Once package. `cdk` pins only apply once a package
+ * `core` pins apply to every Connect package. `cdk` pins only apply once a package
  * has opted into CDK - `init` adds them when asked, and `sync` then keeps them
  * current without ever forcing CDK onto a package that does not use it.
  */
@@ -32,7 +39,7 @@ export interface ManagedPin {
  * Every dependency whose version platform-pkg-dev owns.
  *
  * `init` writes these and `sync` enforces them, both from this one list, so the
- * two can never disagree about what a Once package should be pinned to.
+ * two can never disagree about what a Connect package should be pinned to.
  */
 export const MANAGED_PINS: readonly ManagedPin[] = [
   {
@@ -108,6 +115,9 @@ export const MANAGED_PINS: readonly ManagedPin[] = [
 /** Top-level manifest fields platform-pkg-dev also owns. */
 export const MANAGED_FIELDS = {
   packageManager: PACKAGE_MANAGER,
+  publishConfig: {
+    registry: PUBLISH_CONFIG_REGISTRY,
+  },
   enginesNode: `>=${NODE_MAJOR}`,
 } as const;
 

@@ -23,7 +23,7 @@ describe('targetName', () => {
 });
 
 const VARS = {
-  packageName: 'once-org',
+  packageName: 'connect-org',
   team: 'identity',
   cdkNote: '',
   cdkSection: '',
@@ -67,7 +67,7 @@ describe('renderTemplateDir', () => {
     const report = await renderTemplateDir('base', dir, VARS, { force: false });
 
     expect(report.written).toContain(join('src', 'index.ts'));
-    expect(await readFile(join(dir, 'src', 'index.ts'), 'utf8')).toContain("'once-org'");
+    expect(await readFile(join(dir, 'src', 'index.ts'), 'utf8')).toContain("'connect-org'");
   });
 
   it('ships its templates next to dist', () => {

@@ -6,7 +6,6 @@
     "lib": ["ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "types": ["node"],
 
     "strict": true,
     "noUncheckedIndexedAccess": true,

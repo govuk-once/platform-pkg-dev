@@ -19,7 +19,7 @@ export interface Requirement {
 export const REQUIREMENTS: readonly Requirement[] = [
   {
     bin: 'git',
-    why: 'the Once git hooks are installed into a git repository',
+    why: 'the Connect git hooks are installed into a git repository',
     install: 'xcode-select --install',
   },
   {

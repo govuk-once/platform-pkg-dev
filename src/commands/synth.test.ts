@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { resolveRole } from './synth.js';
 import { summarise } from './scan.js';
 
-const ROLES = { dev: 'once-udp-development-admin', prod: 'once-udp-production-admin' };
+const ROLES = { dev: 'connect-udp-development-admin', prod: 'connect-udp-production-admin' };
 
 afterEach(() => {
   delete process.env['ENV'];

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { TEMPLATES_ROOT } from './render.js';
 
 /**
- * The formatter config every Once package carries.
+ * The formatter config every Connect package carries.
  *
  * Generated rather than extended: oxfmt has no `extends` mechanism, so the only
  * way to keep formatting consistent across packages is for platform-pkg-dev to own the

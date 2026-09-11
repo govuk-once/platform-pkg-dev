@@ -31,7 +31,7 @@ export function targetName(name: string): string {
 /**
  * Template files that seed a package rather than being managed by platform-pkg-dev.
  *
- * Once written they belong to the package, so `--force` must not overwrite
+ * Connect written they belong to the package, so `--force` must not overwrite
  * them: re-scaffolding to pick up a config change should never destroy
  * someone's source or their README.
  */

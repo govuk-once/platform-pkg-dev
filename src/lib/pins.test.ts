@@ -4,7 +4,7 @@ import { applyDrift, computeDrift, MANAGED_FIELDS, MANAGED_PINS, type Manifest }
 import { PINNED_NAMES, TOOLCHAIN } from '../versions.js';
 
 const inSync = (): Manifest => ({
-  name: 'once-org',
+  name: 'connect-org',
   packageManager: MANAGED_FIELDS.packageManager,
   engines: { node: MANAGED_FIELDS.enginesNode },
   devDependencies: Object.fromEntries(
@@ -97,7 +97,10 @@ describe('computeDrift', () => {
 
 describe('applyDrift', () => {
   it('makes a drifted manifest clean, and is idempotent', () => {
-    const manifest: Manifest = { name: 'once-org', devDependencies: { '@types/node': '^1.0.0' } };
+    const manifest: Manifest = {
+      name: 'connect-org',
+      devDependencies: { '@types/node': '^1.0.0' },
+    };
 
     applyDrift(manifest, computeDrift(manifest));
     expect(computeDrift(manifest)).toEqual([]);
@@ -108,7 +111,7 @@ describe('applyDrift', () => {
 
   it('moves a misplaced dependency instead of duplicating it', () => {
     const manifest: Manifest = {
-      name: 'once-org',
+      name: 'connect-org',
       dependencies: { '@types/node': '1.0.0' },
     };
 
@@ -120,7 +123,7 @@ describe('applyDrift', () => {
 
   it('leaves unmanaged dependencies untouched', () => {
     const manifest: Manifest = {
-      name: 'once-org',
+      name: 'connect-org',
       dependencies: { 'some-lib': '^1.2.3' },
       devDependencies: { '@types/node': '^1.0.0' },
     };

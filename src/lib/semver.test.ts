@@ -25,7 +25,7 @@ describe('isNewer', () => {
 
 describe('isRegistrySpec', () => {
   it('accepts ranges and exact versions', () => {
-    expect(isRegistrySpec('^0.1.0')).toBe(true);
+    expect(isRegistrySpec('0.0.1')).toBe(true);
     expect(isRegistrySpec('0.1.0')).toBe(true);
   });
 

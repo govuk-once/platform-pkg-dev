@@ -68,23 +68,23 @@ describe('renderManagedFiles', () => {
   });
 
   it('resolves paths from the script, not the working directory', async () => {
-    const hook = find(await render('once-org'), '.githooks/pre-commit').content;
+    const hook = find(await render('connect-org'), '.githooks/pre-commit').content;
 
     // git runs hooks from the repository root, but the same script has to work
     // when run by hand from the package root, so nothing may be cwd-relative.
     expect(hook).toContain('dirname "$0"');
-    expect(hook).not.toContain('./once-org/');
+    expect(hook).not.toContain('./connect-org/');
   });
 
   it('is identical whatever the package is called or where it sits', async () => {
-    const nested = find(await render('once-org'), '.githooks/pre-commit').content;
+    const nested = find(await render('connect-org'), '.githooks/pre-commit').content;
     const root = find(await render('.'), '.githooks/pre-commit').content;
 
     expect(nested).toBe(root);
   });
 
   it('renders identically twice, so sync reports no phantom drift', async () => {
-    expect(await render('once-org')).toEqual(await render('once-org'));
+    expect(await render('connect-org')).toEqual(await render('connect-org'));
   });
 });
 

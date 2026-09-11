@@ -17,6 +17,9 @@ default_install_hook_types:
 # overridden explicitly below.
 default_stages: [pre-commit]
 
+# Stop pre-commit on first failed hook
+fail_fast: true
+
 repos:
   # File hygiene and the cheap safety nets. All auto-fixing hooks come first so
   # later hooks see the corrected files.
@@ -36,7 +39,7 @@ repos:
         # Kept on one line: (?x) is a global flag in Python's re, so it would
         # leak verbose mode into anything merged in from pre-commit.extend.yaml.
         # Anchored with (^|/) rather than ^: pre-commit reports paths relative to
-        # the git root, so in a monorepo these arrive as once-org/tsconfig.json.
+        # the git root, so in a monorepo these arrive as connect-org/tsconfig.json.
         exclude: '(^|/)(\.oxlintrc\.json|_oxlintrc\.json|\.oxfmtrc\.json|\.vscode/.*\.json|_vscode/.*\.json|tsconfig.*\.json|oxlint\.base\.json)$'
       - id: check-toml
       - id: check-merge-conflict
@@ -60,7 +63,7 @@ repos:
         # Lockfiles are full of base64 integrity hashes, which trip the
         # high-entropy detector on every commit that touches them.
         # (^|/) not ^ - paths are relative to the git root, which in a monorepo
-        # means once-org/pnpm-lock.yaml rather than pnpm-lock.yaml.
+        # means connect-org/pnpm-lock.yaml rather than pnpm-lock.yaml.
         exclude: '(^|/)(pnpm-lock\.yaml|package-lock\.json|yarn\.lock|.*\.min\.(js|css)|.*\.snap)$'
         # Two false positives the keyword detector raises across this estate.
         # Excluded by line rather than by file, so every other line in those
@@ -74,6 +77,16 @@ repos:
         args:
           - --exclude-lines
           - '("detect-secrets":|["'']?TOP_SECRET["'']?\s*[:=]\s*["'']TOP_SECRET)'
+
+  # Spell checker for code and documentation.
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: '{{cspellRev}}'
+    hooks:
+      - id: cspell
+        args: [--no-exit-code]
+        verbose: true
+        # Optional: uncomment to specify a custom config file path
+        # args: [--config, .cspell.json]
 
   # semgrep runs on push, not commit: a full ruleset scan is too slow to sit in
   # front of every commit. detect-secrets stays on commit because it is fast and
@@ -103,7 +116,7 @@ repos:
     hooks:
       - id: actionlint
 
-  # The Once toolchain. These call the `dev` CLI, so they always use the
+  # The Connect toolchain. These call the `dev` CLI, so they always use the
   # TypeScript, Vitest and oxlint versions platform-pkg-dev pins.
   #
   # `dev sync --check` is deliberately NOT a hook here. pre-commit reads this

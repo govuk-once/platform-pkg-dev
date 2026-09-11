@@ -8,7 +8,7 @@ import { which } from '../lib/which.js';
 import { packageDirWithinRepo } from '../lib/git.js';
 import type { RunContext } from './run.js';
 
-export const HOOKS_USAGE = `${bold('dev hooks')} - wire up the Once git hooks
+export const HOOKS_USAGE = `${bold('dev hooks')} - wire up the Connect git hooks
 
 Usage
   dev hooks install [options]
@@ -151,7 +151,7 @@ function status(cwd: string): number {
   const configured = git(cwd, ['config', '--get', 'core.hooksPath']).stdout;
 
   if (configured === '') {
-    error(`core.hooksPath is not set - the Once hooks are not active.`);
+    error(`core.hooksPath is not set - the Connect hooks are not active.`);
     process.stderr.write(`  ${dim('dev hooks install')}\n`);
     return 1;
   }
@@ -182,6 +182,6 @@ function uninstall(cwd: string): number {
   const result = git(cwd, ['config', '--unset', 'core.hooksPath']);
   if (result.status !== 0 && result.status !== 5) return result.status;
 
-  ok('core.hooksPath unset - the Once hooks are no longer active.');
+  ok('core.hooksPath unset - the Connect hooks are no longer active.');
   return 0;
 }

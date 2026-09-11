@@ -184,13 +184,13 @@ describe('preCommitVars', () => {
   });
 
   it('prefixes everything when the package is nested in a monorepo', () => {
-    const vars = preCommitVars('once-org');
+    const vars = preCommitVars('connect-org');
 
     // pre-commit runs hooks from the git root, so an unprefixed path would
     // resolve against the wrong directory.
-    expect(vars['devBin']).toBe('./once-org/node_modules/.bin/dev');
-    expect(vars['devCwd']).toBe(' --cwd once-org');
-    expect(vars['pathPrefix']).toBe('once-org/');
+    expect(vars['devBin']).toBe('./connect-org/node_modules/.bin/dev');
+    expect(vars['devCwd']).toBe(' --cwd connect-org');
+    expect(vars['pathPrefix']).toBe('connect-org/');
   });
 });
 
@@ -205,17 +205,17 @@ describe('renderConfig for a nested package', () => {
   });
 
   it('points the local hooks at the package, not the git root', async () => {
-    const out = await renderConfig(undefined, 'once-org');
+    const out = await renderConfig(undefined, 'connect-org');
 
-    expect(out).toContain('./once-org/node_modules/.bin/dev lint --cwd once-org');
-    expect(out).toContain('./once-org/node_modules/.bin/dev typecheck --cwd once-org');
+    expect(out).toContain('./connect-org/node_modules/.bin/dev lint --cwd connect-org');
+    expect(out).toContain('./connect-org/node_modules/.bin/dev typecheck --cwd connect-org');
     expect(out).not.toContain('pnpm exec dev');
   });
 
   it('does not make the sync check a hook inside the chain', async () => {
     // pre-commit parses this file up front, so a sync hook here would validate
     // a config that had already been used. It runs before pre-commit instead.
-    const out = await renderConfig(undefined, 'once-org');
+    const out = await renderConfig(undefined, 'connect-org');
 
     const config = parseDocument(out).toJSON() as {
       repos: { hooks: { id: string; entry?: string }[] }[];
@@ -227,9 +227,9 @@ describe('renderConfig for a nested package', () => {
   });
 
   it('anchors the master exclusions so they survive a path prefix', async () => {
-    const out = await renderConfig(undefined, 'once-org');
+    const out = await renderConfig(undefined, 'connect-org');
 
-    // `^pnpm-lock.yaml` would never match `once-org/pnpm-lock.yaml`.
+    // `^pnpm-lock.yaml` would never match `connect-org/pnpm-lock.yaml`.
     expect(out).toContain('(^|/)(pnpm-lock');
     expect(out).toContain('(^|/)(\\.oxlintrc');
   });
