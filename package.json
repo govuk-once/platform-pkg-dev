@@ -1,7 +1,7 @@
 {
   "name": "platform-pkg-dev",
   "version": "0.0.1",
-  "description": "Core development tooling for the Once platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
+  "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
   "bin": {
     "dev": "./dist/cli.js"
@@ -38,18 +38,17 @@
     "build": "tsc -p tsconfig.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';writeFileSync('VERSION',JSON.parse(readFileSync('package.json','utf8')).version+'\\n')\"",
     "build:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "pretest": "pnpm run build",
     "test": "vitest run",
-    "pretest:watch": "pnpm run build",
     "test:watch": "vitest",
     "lint": "oxlint --type-aware",
     "format": "oxfmt",
-    "pre-commit": "DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-commit",
+    "pre-commit": "pnpm build && DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-commit",
     "pre-push": "pre-commit run --hook-stage pre-push --all-files",
     "postinstall": "node dist/cli.js hooks install 2>/dev/null || true",
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "cspell": "10.3.0",
     "oxfmt": "0.63.0",
     "oxlint": "1.78.0",
     "oxlint-tsgolint": "7.0.2001",

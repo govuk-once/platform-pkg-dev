@@ -48,6 +48,17 @@ export function runLint(argv: readonly string[], context: RunContext): number {
 }
 
 /**
+ * `dev spell [...]` - cpell, defaulting to the whole package.
+ *
+ * CSpell spellchecker
+ */
+export function runSpell(argv: readonly string[], context: RunContext): number {
+  const args = [...argv, '"./src/**/*.ts"'];
+  // TODO: fill out options for cspell, add ext functionality
+  return runTool('cspell', args, { cwd: context.cwd });
+}
+
+/**
  * `dev format [...]` - oxfmt, writing in place unless --check is passed.
  *
  * Formatting is not linting: oxlint reports code smells and has no opinion on

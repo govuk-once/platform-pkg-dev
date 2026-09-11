@@ -161,7 +161,7 @@ export async function runScan(argv: readonly string[], context: RunContext): Pro
   }
 
   process.stderr.write(
-    `\n  ${dim('Fix it, or suppress it with a reason - see the checkov package in once-org.')}\n`,
+    `\n  ${dim('Fix it, or suppress it with a reason - see the checkov package in connect-org.')}\n`,
   );
 
   return 1;

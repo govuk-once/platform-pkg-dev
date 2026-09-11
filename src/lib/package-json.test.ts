@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { buildPackageJson, validatePackageName, validateTeam } from './package-json.js';
-import { CDK, NODE_MAJOR, PACKAGE_MANAGER } from '../versions.js';
+import { CDK, NODE_MAJOR, PACKAGE_MANAGER, PUBLISH_CONFIG_REGISTRY } from '../versions.js';
 
 const base = {
-  packageName: 'once-org',
+  packageName: 'connect-org',
   team: 'identity',
   cdk: false,
   isPackage: false,
@@ -11,16 +11,16 @@ const base = {
 } as const;
 
 const parse = (answers: Parameters<typeof buildPackageJson>[0]) =>
-  JSON.parse(buildPackageJson(answers, '^0.1.0')) as Record<string, unknown>;
+  JSON.parse(buildPackageJson(answers, '0.0.1')) as Record<string, unknown>;
 
 describe('validatePackageName', () => {
-  it('accepts conventional Once names', () => {
-    expect(validatePackageName('once-org')).toBeUndefined();
-    expect(validatePackageName('once-security')).toBeUndefined();
+  it('accepts conventional Connect names', () => {
+    expect(validatePackageName('connect-org')).toBeUndefined();
+    expect(validatePackageName('connect-security')).toBeUndefined();
   });
 
   it('rejects uppercase, scopes and leading punctuation', () => {
-    expect(validatePackageName('OnceOrg')).toBeDefined();
+    expect(validatePackageName('ConnectOrg')).toBeDefined();
     expect(validatePackageName('@once/org')).toBeDefined();
     expect(validatePackageName('-once')).toBeDefined();
   });
@@ -37,13 +37,36 @@ describe('buildPackageJson', () => {
   it('emits the fixed platform fields', () => {
     const manifest = parse(base);
 
-    expect(manifest['name']).toBe('once-org');
+    expect(manifest['name']).toBe('connect-org');
     expect(manifest['type']).toBe('module');
     expect(manifest['sideEffects']).toBe(false);
     expect(manifest['files']).toEqual(['dist']);
     expect(manifest['engines']).toEqual({ node: `>=${NODE_MAJOR}` });
     expect(manifest['packageManager']).toBe(PACKAGE_MANAGER);
+    expect(manifest['publishConfig']).toStrictEqual({ registry: PUBLISH_CONFIG_REGISTRY });
     expect(manifest['once']).toEqual({ team: 'identity' });
+    expect(manifest).toStrictEqual({
+      name: 'connect-org',
+      version: '0.0.0',
+      private: true,
+      type: 'module',
+      sideEffects: false,
+      files: ['dist'],
+      engines: { node: `>=${NODE_MAJOR}` },
+      packageManager: PACKAGE_MANAGER,
+      devDependencies: {
+        '@types/node': '24.13.3',
+        oxfmt: '0.63.0',
+        oxlint: '1.78.0',
+        'oxlint-tsgolint': '7.0.2001',
+        'platform-pkg-dev': '0.0.1',
+        vitest: '4.1.10',
+      },
+      publishConfig: {
+        registry: PUBLISH_CONFIG_REGISTRY,
+      },
+      once: { team: 'identity' },
+    });
   });
 
   it('has no scripts block', () => {
@@ -52,7 +75,7 @@ describe('buildPackageJson', () => {
 
   it('depends on platform-pkg-dev at the requested spec', () => {
     const devDeps = parse(base)['devDependencies'] as Record<string, string>;
-    expect(devDeps['platform-pkg-dev']).toBe('^0.1.0');
+    expect(devDeps['platform-pkg-dev']).toBe('0.0.1');
 
     const linked = JSON.parse(buildPackageJson(base, 'link:../platform-pkg-dev')) as {
       devDependencies: Record<string, string>;

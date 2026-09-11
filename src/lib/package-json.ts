@@ -1,7 +1,7 @@
 import { MANAGED_FIELDS, MANAGED_PINS } from './pins.js';
 
 export interface ScaffoldAnswers {
-  /** npm package name, e.g. `once-org`. */
+  /** npm package name, e.g. `connect-org`. */
   readonly packageName: string;
   /** Owning team, recorded under `once.team`. */
   readonly team: string;
@@ -80,6 +80,9 @@ export function buildPackageJson(answers: ScaffoldAnswers, pkgDevSpec: string): 
     packageManager: MANAGED_FIELDS.packageManager,
     ...(Object.keys(dependencies).length > 0 ? { dependencies: sortKeys(dependencies) } : {}),
     devDependencies: sortKeys(devDependencies),
+    publishConfig: {
+      registry: MANAGED_FIELDS.publishConfig.registry,
+    },
     once: { team: answers.team },
   };
 

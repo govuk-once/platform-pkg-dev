@@ -71,6 +71,10 @@ export const NODE_MAJOR = FILE.node;
 /** Written to `packageManager` in every generated package.json. */
 export const PACKAGE_MANAGER = FILE.packageManager;
 
+/** Written to `publishConfig.registry` in every generated package.json */
+export const PUBLISH_CONFIG_REGISTRY =
+  'https://registry-prod-904690835784.d.codeartifact.eu-west-2.amazonaws.com/npm/registry-prod-repo/';
+
 /**
  * Toolchain owned by platform-pkg-dev itself. These are real `dependencies` of this
  * package, not devDependencies of the generated repo - consumers reach them

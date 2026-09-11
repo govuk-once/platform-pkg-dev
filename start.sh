@@ -1,8 +1,8 @@
 #!/bin/sh
-# Bootstrap a Once package.
+# Bootstrap a Connect package.
 #
 #   curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh
-#   curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir once-foo --name once-foo --team identity
+#   curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity
 #
 # --dir names a folder to create and work in. Without it, an empty directory is
 # used as-is and a non-empty one prompts, so piping this into the wrong place
@@ -30,9 +30,9 @@ fail() { echo "platform-pkg-dev: $1" >&2; exit 1; }
 # example under CI or a detached shell, where writing to it aborts the script.
 has_tty() { { true > /dev/tty; } 2>/dev/null; }
 
-# `start.sh local` resolves platform-pkg-dev from a sibling checkout instead of
+# `start.sh --local` resolves platform-pkg-dev from a sibling checkout instead of
 # the registry.  Strip the keyword before normal arg parsing begins.
-if [ "${1:-}" = "local" ]; then
+if [ "${1:-}" = "--local" ]; then
   PKG_DEV="link:../platform-pkg-dev"
   shift
 fi
@@ -95,7 +95,7 @@ else
   "name": "dev-bootstrap",
   "private": true,
   "packageManager": "${PNPM}",
-  "devDependencies": { "platform-pkg-dev": "${PKG_DEV}" },
+  "devDependencies": { "@govuk-connect/dev": "${PKG_DEV}" },
   "once": { "bootstrap": true }
 }
 JSON

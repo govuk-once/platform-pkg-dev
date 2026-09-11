@@ -1,6 +1,6 @@
 # platform-pkg-dev
 
-Core development tooling for the Once platform. Every other Once package depends
+Core development tooling for the Connect platform. Every other Connect package depends
 on this one.
 
 It does two jobs:
@@ -16,7 +16,7 @@ not installed until a `package.json` exists that depends on it. `start.sh`
 closes that loop:
 
 ```sh
-curl -H "Authorization: token $GITHUB_TOKEN" -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir once-foo --name once-foo --team identity
+curl -H "Authorization: token $GITHUB_TOKEN" -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity
 ```
 
 It checks Node, pins pnpm through corepack, writes a throwaway `package.json`,
@@ -34,7 +34,7 @@ alone.
 In a package that already has `platform-pkg-dev` installed, run `dev init` directly:
 
 ```sh
-cd once-org
+cd connect-org
 pnpm dev init
 ```
 
@@ -47,7 +47,7 @@ local checkout and it works offline:
 ```sh
 PKG_DEV=link:../platform-pkg-dev \
   sh /platform-pkg-dev/start.sh \
-  --dir once-trial --name once-trial --team once-team
+  --local --dir connect-trial --name connect-trial --team connect-team
 ```
 
 The `link:` path is resolved from the **new package directory**, not from where
@@ -163,7 +163,7 @@ Roles are declared per package, so no script hardcodes an account:
 ```jsonc
 "once": {
   "team": "platform",
-  "aws": { "region": "eu-west-2", "roles": { "dev": "once-udp-development-admin" } }
+  "aws": { "region": "eu-west-2", "roles": { "dev": "connect-udp-development-admin" } }
 }
 ```
 
@@ -197,7 +197,7 @@ but over files; this is the one to trust before a deployment.
 pnpm dev build      # tsc, dual ESM/CJS when both tsconfigs are present
 pnpm dev test       # vitest, once
 pnpm dev test:watch # vitest, re-running affected tests on save
-pnpm dev lint       # oxlint, type-aware, with the shared Once config
+pnpm dev lint       # oxlint, type-aware, with the shared Connect config
 pnpm dev format     # oxfmt (--check to verify without writing)
 pnpm dev typecheck  # tsc --noEmit
 pnpm dev sync           # re-pin managed deps, then pnpm install

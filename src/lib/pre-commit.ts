@@ -4,7 +4,7 @@ import { isMap, isSeq, parseDocument, type Document, type YAMLMap } from 'yaml';
 import { substitute, TEMPLATES_ROOT } from './render.js';
 import { revOf } from '../versions.js';
 
-/** The rendered file every Once package carries. Owned by platform-pkg-dev. */
+/** The rendered file every Connect package carries. Owned by platform-pkg-dev. */
 export const CONFIG_FILE = '.pre-commit-config.yaml';
 
 /** Where a package overrides or adds hooks for itself alone. */
@@ -42,6 +42,7 @@ export function preCommitVars(packageDir: PackageDir = '.'): Record<string, stri
     semgrepRev: revOf('semgrep'),
     checkovRev: revOf('checkov'),
     actionlintRev: revOf('actionlint'),
+    cspellRev: revOf('cspell'),
 
     // Direct binary, not `pnpm exec`: hooks run from the git root, which in a
     // monorepo has no package.json for corepack to read a pnpm version from.

@@ -6,7 +6,7 @@ export interface ToolSpec {
   readonly bin: string;
   /** Exact version required, from versions.json. */
   readonly expected: string;
-  /** Why a Once package needs it, shown when the check fails. */
+  /** Why a Connect package needs it, shown when the check fails. */
   readonly why: string;
   /** How to install or change to the pinned version. */
   readonly install: (version: string) => string;
@@ -25,7 +25,7 @@ export function toolSpecs(): readonly ToolSpec[] {
   return TOOL_NAMES.map((bin) => ({
     bin,
     expected: toolVersion(bin),
-    why: WHY[bin] ?? 'used by the Once git hooks',
+    why: WHY[bin] ?? 'used by the Connect git hooks',
     install: INSTALL[bin] ?? ((v: string) => `pipx install ${bin}==${v}`),
   }));
 }

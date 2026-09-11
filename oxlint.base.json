@@ -1,4 +1,4 @@
-// Shared lint rules for every Once package, alongside tsconfig.base.json.
+// Shared lint rules for every Connect package, alongside tsconfig.base.json.
 // Packages extend this from their own .oxlintrc.json rather than copying it,
 // so rules stay centrally owned and move in one place.
 {

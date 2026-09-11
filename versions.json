@@ -25,7 +25,8 @@
     "detect-secrets": "v1.5.0",
     "semgrep": "v1.174.0",
     "checkov": "3.3.13",
-    "actionlint": "v1.7.12"
+    "actionlint": "v1.7.12",
+    "cspell": "v10.2.0"
   },
   "$versionUrlComment": "Where `dev sync` looks for the latest platform-pkg-dev version: a plain-text file containing just the version, served next to start.sh. Override with DEV_VERSION_URL. Set to null to disable the check.",
   "versionUrl": "https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/VERSION",
