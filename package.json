@@ -35,7 +35,7 @@
     "registry": "https://registry-prod-904690835784.d.codeartifact.eu-west-2.amazonaws.com/npm/registry-prod-repo"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';writeFileSync('VERSION',JSON.parse(readFileSync('package.json','utf8')).version+'\\n')\"",
+    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';const v=JSON.parse(readFileSync('package.json','utf8')).version+'\\n';try{if(readFileSync('VERSION','utf8')===v)process.exit(0)}catch{};writeFileSync('VERSION',v)\"",
     "build:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
