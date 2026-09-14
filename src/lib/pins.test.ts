@@ -143,10 +143,11 @@ describe('versions.json', () => {
   it('matches the toolchain platform-pkg-dev actually installs', () => {
     const own = JSON.parse(
       readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
-    ) as { dependencies: Record<string, string> };
+    ) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
 
     for (const [name, spec] of Object.entries(TOOLCHAIN)) {
-      expect(own.dependencies[name], `platform-pkg-dev must depend on ${name}@${spec}`).toBe(spec);
+      const installed = own.dependencies?.[name] ?? own.devDependencies?.[name];
+      expect(installed, `platform-pkg-dev must depend on ${name}@${spec}`).toBe(spec);
     }
   });
 });

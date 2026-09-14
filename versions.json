@@ -3,6 +3,7 @@
   "node": 24,
   "$packageManagerComment": "Must be at least 10.26.1. pnpm 10.26.0 shipped two days before pnpm/pnpm#10327 landed, and without that fix blockExoticSubdeps misreads any subdependency with a wildcard `*` specifier as exotic - which vitest has several of. It failed installs with 'resolved via undefined' and sometimes a package name that does not exist.",
   "packageManager": "pnpm@11.25.0",
+  "codeArtifactAccount": 904690835784,
   "versions": {
     "typescript": "7.0.2",
     "vitest": "4.1.10",
@@ -27,6 +28,9 @@
     "checkov": "3.3.13",
     "actionlint": "v1.7.12",
     "cspell": "v10.2.0"
+  },
+  "publishConfig": {
+    "release": "https://registry-prod-904690835784.d.codeartifact.eu-west-2.amazonaws.com/npm/registry-prod-repo"
   },
   "$versionUrlComment": "Where `dev sync` looks for the latest platform-pkg-dev version: a plain-text file containing just the version, served next to start.sh. Override with DEV_VERSION_URL. Set to null to disable the check.",
   "versionUrl": "https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/VERSION",

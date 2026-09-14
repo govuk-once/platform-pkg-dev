@@ -1,6 +1,6 @@
 {
   "name": "@govuk-connect/dev",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
   "bin": {
@@ -38,24 +38,29 @@
     "build": "tsc -p tsconfig.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';writeFileSync('VERSION',JSON.parse(readFileSync('package.json','utf8')).version+'\\n')\"",
     "build:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "pretest": "pnpm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "oxlint --type-aware",
     "format": "oxfmt",
     "pre-commit": "pnpm build && DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-commit",
     "pre-push": "pre-commit run --hook-stage pre-push --all-files",
-    "postinstall": "node dist/cli.js hooks install 2>/dev/null || true",
+    "prepare": "pnpm run build && ./hooks/setup-git-config && node dist/cli.js hooks install 2>/dev/null || true",
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "aws-cdk-lib": "2.265.0",
+    "constructs": "10.8.1",
     "cspell": "10.3.0",
+    "typescript": "7.0.2",
+    "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "aws-cdk": "2.1136.0",
     "oxfmt": "0.63.0",
     "oxlint": "1.78.0",
     "oxlint-tsgolint": "7.0.2001",
-    "typescript": "7.0.2",
-    "vitest": "4.1.10",
-    "yaml": "2.9.0"
+    "vitest": "4.1.10"
   },
   "engines": {
     "node": ">=24"

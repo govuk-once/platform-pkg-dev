@@ -35,15 +35,21 @@ export function parseCredentials(output: string): Record<string, string> {
   const credentials: Record<string, string> = {};
 
   for (const line of output.split('\n')) {
-    const match = /^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)=(.*)$/.exec(line.trim());
+    // 1. Trim line and optionally drop a trailing semicolon
+    const sanitizedLine = line.trim().replace(/;$/, '');
+
+    // 2. Extract key and raw value
+    const match = /^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)=(.*)$/.exec(sanitizedLine);
     if (match === null) continue;
 
     const [, key, rawValue = ''] = match;
     if (key === undefined || !CREDENTIAL_VARS.has(key)) continue;
 
-    // Strip one matching pair of surrounding quotes, which is how the CLI
-    // emits values containing `/` or `+`.
-    const value = /^(['"]).*\1$/s.test(rawValue) ? rawValue.slice(1, -1) : rawValue;
+    // 3. Trim whitespace from value, then strip matching surrounding quotes
+    let value = rawValue.trim();
+    if (/^(['"]).*\1$/s.test(value)) {
+      value = value.slice(1, -1);
+    }
 
     credentials[key] = value;
   }
@@ -74,7 +80,6 @@ export function assumeRole(role: string): Record<string, string> {
   }
 
   const result = spawnSync(GDS_CLI, ['aws', role, '-e'], { encoding: 'utf8' });
-
   if (result.error !== undefined) {
     fail(`Failed to run ${GDS_CLI}: ${result.error.message}`);
   }
@@ -96,6 +101,61 @@ export function assumeRole(role: string): Record<string, string> {
   }
 
   return credentials;
+}
+
+/**
+ * Authenticates the local npm package manager against the CodeArtifact repository.
+ *
+ * Fetches a short-lived auth token from AWS and updates the user's global `.npmrc`
+ * so pnpm and npm can pull private workspace dependencies from the central registry.
+ *
+ * The caller must pass credentials from a prior `assumeRole` call: the AWS CLI
+ * needs them to request the CodeArtifact token, and inheriting `process.env` would
+ * silently use whatever profile or SSO session happens to be active - which may be
+ * a different account.
+ */
+export function authoriseCodeArtifact(
+  codeArtifactAccount: number,
+  credentials: Record<string, string>,
+): void {
+  if (which('aws') === undefined) {
+    fail('aws is not on PATH.', 'Install the AWS CLI: https://aws.amazon.com/cli/');
+  }
+
+  const result = spawnSync(
+    'aws',
+    [
+      'codeartifact',
+      'login',
+      '--tool',
+      'npm',
+      '--namespace',
+      'govuk-connect',
+      '--repository',
+      'registry-prod-repo',
+      '--domain',
+      'registry-prod',
+      '--domain-owner',
+      String(codeArtifactAccount),
+      '--region',
+      'eu-west-2',
+    ],
+    {
+      encoding: 'utf8',
+      env: { ...process.env, ...credentials },
+    },
+  );
+
+  if (result.error !== undefined) {
+    fail(`Failed to run aws codeartifact login: ${result.error.message}`);
+  }
+
+  if ((result.status ?? 1) !== 0) {
+    fail(
+      'Could not authorise CodeArtifact.',
+      `${(result.stderr ?? '').trim()}\n  ${dim('Are the credentials still valid?')}`,
+    );
+  }
 }
 
 /**

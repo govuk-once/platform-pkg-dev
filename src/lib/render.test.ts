@@ -38,7 +38,7 @@ describe('renderTemplateDir', () => {
     const dir = await scratch();
     const report = await renderTemplateDir('base', dir, VARS, { force: false });
 
-    // .nvmrc, .githooks and .vscode are managed by platform-pkg-dev, not seeded here.
+    // .nvmrc, .npmrc, .githooks and .vscode are managed by platform-pkg-dev, not seeded here.
     expect(report.written).toContain('.gitignore');
     expect(report.written).toContain('.oxlintrc.json');
     expect(report.written).toContain('tsconfig.json');

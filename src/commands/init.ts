@@ -8,6 +8,7 @@ import {
   validateTeam,
   type ScaffoldAnswers,
 } from '../lib/package-json.js';
+import { CODE_ARTIFACT_ACCOUNT } from '../versions.js';
 import { bold, dim, fail, info, ok, step, warn } from '../lib/log.js';
 import { ask, closePrompts, confirm } from '../lib/prompt.js';
 import { inspectEnvironment, reportPreflight } from '../lib/preflight.js';
@@ -308,6 +309,7 @@ async function scaffold(
     packageName: answers.packageName,
     team: answers.team,
     cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json' : '',
+    codeArtifactAccount: String(CODE_ARTIFACT_ACCOUNT),
     // Carries its own surrounding blank lines so the README is valid markdown
     // whether or not the section is present.
     cdkSection: answers.cdk
@@ -349,6 +351,7 @@ async function scaffold(
       force: options.force || bootstrapped,
     }),
   );
+  console.log(vars);
 
   reports.push(
     await renderTemplateDir('base', targetDir, vars, {

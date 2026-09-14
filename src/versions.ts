@@ -1,16 +1,26 @@
 import { readFileSync } from 'node:fs';
 
 /**
+ * In a package.json file, the publishConfig object provides instructions to the
+ * package manager (npm, pnpm, or yarn) specifically for when the package is being
+ * published via npm publish or pnpm publish.
+ */
+interface PublishConfig {
+  readonly release: string;
+}
+
+/**
  * Every version platform-pkg-dev hands out lives in versions.json at the package root,
  * not in this file. Bumping a dependency is a data edit - no TypeScript change,
  * and it stays readable in an installed copy.
  *
  * This module loads that file once and exposes it as typed constants.
  */
-
 interface VersionsFile {
   readonly node: number;
   readonly packageManager: string;
+  readonly publishConfig: PublishConfig;
+  readonly codeArtifactAccount: number;
   readonly versions: Readonly<Record<string, string>>;
   readonly tools: Readonly<Record<string, string>>;
   readonly hookRevs: Readonly<Record<string, string>>;
@@ -68,12 +78,14 @@ export const PINNED_NAMES: readonly string[] = Object.keys(FILE.versions);
 /** Node major written to the generated .nvmrc, and the minimum platform-pkg-dev runs on. */
 export const NODE_MAJOR = FILE.node;
 
+/** Code Artifact Account. */
+export const CODE_ARTIFACT_ACCOUNT = FILE.codeArtifactAccount;
+
 /** Written to `packageManager` in every generated package.json. */
 export const PACKAGE_MANAGER = FILE.packageManager;
 
 /** Written to `publishConfig.registry` in every generated package.json */
-export const PUBLISH_CONFIG_REGISTRY =
-  'https://registry-prod-904690835784.d.codeartifact.eu-west-2.amazonaws.com/npm/registry-prod-repo';
+export const PUBLISH_CONFIG_REGISTRY = FILE.publishConfig.release;
 
 /**
  * Toolchain owned by platform-pkg-dev itself. These are real `dependencies` of this

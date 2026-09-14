@@ -1,0 +1,7 @@
+#!/bin/sh
+# Managed by platform-pkg-dev. Sets the git config that hooks and signing depend on.
+# Called from the `prepare` npm script (before dist/ exists) and from `dev hooks install`.
+set -eu
+
+git config core.hooksPath .githooks
+git config commit.gpgsign true
