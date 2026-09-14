@@ -8,7 +8,8 @@ import { assumeRole, authoriseCodeArtifact, verifyCredentials } from '../lib/gds
 import { CODE_ARTIFACT_ACCOUNT, NODE_MAJOR } from '../versions.js';
 import { readAwsConfig, resolveRole } from './synth.js';
 import { applyDrift, computeDrift, describeDrift, type Manifest } from '../lib/pins.js';
-import { EXTEND_FILE, ExtendError } from '../lib/pre-commit.js';
+import { CONFIG_FILE, EXTEND_FILE, ExtendError, renderConfig } from '../lib/pre-commit.js';
+import { FORMAT_CONFIG_FILE, renderFormatConfig } from '../lib/format.js';
 import { installDependencies } from '../lib/install.js';
 import { packageDirWithinRepo } from '../lib/git.js';
 import { latestVersion, versionSource } from '../lib/registry.js';
@@ -64,6 +65,7 @@ export async function runSync(argv: readonly string[], context: RunContext): Pro
       check: { type: 'boolean' },
       'no-install': { type: 'boolean' },
       'no-upgrade': { type: 'boolean' },
+      'hooks-only': { type: 'boolean' },
       env: { type: 'string' },
       role: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
@@ -82,6 +84,15 @@ export async function runSync(argv: readonly string[], context: RunContext): Pro
       `Node ${NODE_MAJOR} or newer is required (running ${process.versions.node}).`,
       `nvm install ${NODE_MAJOR} && nvm use ${NODE_MAJOR}`,
     );
+  }
+
+  // --hooks-only: regenerate only the config files the hook chain reads
+  // (.pre-commit-config.yaml, .oxfmtrc.json) without touching .githooks/,
+  // .npmrc, .nvmrc or package.json.  Used by dev-hook in the self-hosting repo
+  // where those files are committed with different content to the consumer
+  // templates.
+  if (values['hooks-only'] === true) {
+    return await syncHookConfigsOnly(context.cwd);
   }
 
   const manifestPath = join(context.cwd, 'package.json');
@@ -360,6 +371,32 @@ function ensureCodeArtifactAuth(
   step('Authorising CodeArtifact');
   authoriseCodeArtifact(CODE_ARTIFACT_ACCOUNT, credentials);
   ok('CodeArtifact authorised');
+}
+
+/**
+ * Regenerates only the config files the hook chain reads up front:
+ * .pre-commit-config.yaml and .oxfmtrc.json.
+ *
+ * Used by dev-hook in the self-hosting repo where .githooks/, .npmrc and .nvmrc
+ * are committed with content that differs from the consumer templates.
+ */
+async function syncHookConfigsOnly(cwd: string): Promise<number> {
+  const packageDir = packageDirWithinRepo(cwd);
+  const extend = await readIfPresent(join(cwd, EXTEND_FILE));
+
+  let config: string;
+  try {
+    config = await renderConfig(extend, packageDir);
+  } catch (cause) {
+    if (cause instanceof ExtendError) fail(cause.message);
+    throw cause;
+  }
+
+  await writeFile(join(cwd, CONFIG_FILE), config, 'utf8');
+  await writeFile(join(cwd, FORMAT_CONFIG_FILE), await renderFormatConfig(), 'utf8');
+
+  ok(`Regenerated ${CONFIG_FILE} and ${FORMAT_CONFIG_FILE}`);
+  return 0;
 }
 
 /** Reads a file a package may legitimately not have yet. */

@@ -38,7 +38,10 @@ short-lived token and write it into the global .npmrc. After this, pnpm and
 npm can pull packages from the private CodeArtifact registry.
 `;
 
-export async function runAssumeRole(argv: readonly string[], _context: RunContext): Promise<number> {
+export async function runAssumeRole(
+  argv: readonly string[],
+  _context: RunContext,
+): Promise<number> {
   const { values, positionals } = parseArgs({
     args: [...argv],
     options: {

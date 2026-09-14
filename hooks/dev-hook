@@ -39,9 +39,10 @@ fi
 # and only report itself out of date afterwards.
 #
 # Consumer packages: check the pins and auto-sync if stale.
-# platform-pkg-dev itself (DEV_BIN is set): rebuild the generated files the hook
-# chain needs (.pre-commit-config.yaml, .npmrc, .nvmrc) from the current
-# templates and versions.json, without installing or checking for upgrades.
+# platform-pkg-dev itself (DEV_BIN is set): regenerate only .pre-commit-config.yaml,
+# the one file the hook chain reads up front. The .githooks/ shims, .npmrc and
+# .nvmrc are committed in this repo and must not be overwritten by the consumer
+# templates that `dev sync` would lay down.
 if [ -z "${DEV_BIN:-}" ]; then
   if ! "$BIN" sync --check; then
     echo "platform-pkg-dev: managed files are out of date - running 'dev sync'." >&2
@@ -53,8 +54,11 @@ if [ -z "${DEV_BIN:-}" ]; then
     git add -u
   fi
 else
-  if ! node "$BIN" sync --no-install --no-upgrade; then
-    echo "platform-pkg-dev: could not rebuild managed files - $HOOK blocked." >&2
+  # Only regenerate the files the hook chain reads — not .githooks/ (committed
+  # with self-hosting shims) or anything else sync would overwrite.
+  echo "platform-pkg-dev: regenerating .pre-commit-config.yaml from templates" >&2
+  if ! node "$BIN" sync --no-install --no-upgrade --hooks-only; then
+    echo "platform-pkg-dev: could not rebuild hook config - $HOOK blocked." >&2
     exit 1
   fi
 fi

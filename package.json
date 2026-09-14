@@ -44,20 +44,24 @@
     "format": "oxfmt",
     "pre-commit": "pnpm build && DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-commit",
     "pre-push": "pre-commit run --hook-stage pre-push --all-files",
+    "prepare": "./hooks/setup-git-config 2>/dev/null || true",
     "postinstall": "node dist/cli.js hooks install 2>/dev/null || true",
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "aws-cdk-lib": "2.265.0",
+    "constructs": "10.8.1",
     "cspell": "10.3.0",
-    "oxfmt": "0.63.0",
-    "oxlint": "1.78.0",
-    "oxlint-tsgolint": "7.0.2001",
     "typescript": "7.0.2",
-    "vitest": "4.1.10",
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "aws-cdk": "^2.1141.0"
+    "@types/node": "24.13.3",
+    "aws-cdk": "2.1136.0",
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "vitest": "4.1.10"
   },
   "engines": {
     "node": ">=24"

@@ -129,6 +129,8 @@ export function authoriseCodeArtifact(
       'login',
       '--tool',
       'npm',
+      '--namespace',
+      'govuk-connect',
       '--repository',
       'registry-prod-repo',
       '--domain',
