@@ -6,3 +6,4 @@ coverage/
 .claude
 .pre-commit-config.yaml
 .npmrc
+pnpm-lock.yaml
