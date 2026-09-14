@@ -118,22 +118,41 @@ if [ "$have" != "$want" ]; then
   corepack prepare ${PNPM} --activate"
 fi
 
+# When --assumeRole is given, assume the GDS role and authorise CodeArtifact
+# before the first install.  platform-pkg-dev itself lives on CodeArtifact, so
+# pnpm cannot fetch it without a valid token.  The CLI is not installed yet, so
+# this calls gds-cli and the AWS CLI directly — the same commands the CLI wraps.
+if [ -n "$ASSUME_ROLE" ]; then
+  command -v gds-cli >/dev/null 2>&1 || fail "gds-cli is not on PATH. Install it: https://github.com/alphagov/gds-cli"
+  command -v aws >/dev/null 2>&1 || fail "aws is not on PATH. Install the AWS CLI: https://aws.amazon.com/cli/"
+
+  echo "platform-pkg-dev: assuming role $ASSUME_ROLE"
+  CREDS=$(gds-cli aws "$ASSUME_ROLE" -e) || fail "Could not assume role $ASSUME_ROLE. Are you on the VPN?"
+
+  # Parse credentials safely — no eval.  Extract only the AWS_ variables we need.
+  export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | sed -n "s/^export AWS_ACCESS_KEY_ID='\\(.*\\)'/\\1/p")
+  export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | sed -n "s/^export AWS_SECRET_ACCESS_KEY='\\(.*\\)'/\\1/p")
+  export AWS_SESSION_TOKEN=$(echo "$CREDS" | sed -n "s/^export AWS_SESSION_TOKEN='\\(.*\\)'/\\1/p")
+
+  [ -n "$AWS_ACCESS_KEY_ID" ] || fail "gds-cli returned no usable credentials for $ASSUME_ROLE."
+
+  echo "platform-pkg-dev: verifying credentials"
+  aws sts get-caller-identity >/dev/null 2>&1 || fail "Credentials are not usable. Check the VPN."
+
+  echo "platform-pkg-dev: authorising CodeArtifact"
+  aws codeartifact login \
+    --tool npm \
+    --namespace govuk-connect \
+    --repository registry-prod-repo \
+    --domain registry-prod \
+    --domain-owner 904690835784 \
+    --region eu-west-2 || fail "Could not authorise CodeArtifact."
+fi
+
 echo "platform-pkg-dev: installing (pnpm ${have})"
 pnpm install || fail "pnpm install failed.
   If platform-pkg-dev is not published yet, point at a local checkout instead:
     pnpm add -D platform-pkg-dev@link:/path/to/platform-pkg-dev && pnpm dev init"
-
-# When --assumeRole is given, assume the GDS role and authorise CodeArtifact
-# before anything tries to pull from the private registry.  The first install
-# above only fetched platform-pkg-dev (from the bootstrap manifest), so its CLI
-# is on PATH but no private dependencies have been resolved yet.
-if [ -n "$ASSUME_ROLE" ]; then
-  echo "platform-pkg-dev: assuming role $ASSUME_ROLE"
-  pnpm dev assumeRole "$ASSUME_ROLE" --verify || fail "Could not assume role $ASSUME_ROLE."
-
-  echo "platform-pkg-dev: authorising CodeArtifact"
-  pnpm dev codeArtifactAuthorise --role "$ASSUME_ROLE" || fail "Could not authorise CodeArtifact."
-fi
 
 # --pkg-dev first so an explicit one from the caller still wins: the spec init
 # records must match the one actually installed above, or the next install
