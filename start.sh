@@ -37,18 +37,16 @@ if [ "${1:-}" = "--local" ]; then
   shift
 fi
 
-# Pull --dir, --identity and --assumeRole out of the arguments; everything
-# else is forwarded to `dev init`.
+# Pull --dir and --assumeRole out of the arguments; everything else is
+# forwarded to `dev init`.
 # The marker keeps quoting intact while rebuilding "$@" in POSIX sh.
 DIR=""
-IDENTITY=""
 ASSUME_ROLE=""
 set -- "$@" "--end-of-args--"
 while [ "$1" != "--end-of-args--" ]; do
   case "$1" in
     --dir) shift; [ "$1" != "--end-of-args--" ] || fail "--dir needs a folder name."; DIR="$1" ;;
     --dir=*) DIR="${1#--dir=}" ;;
-    --identity) IDENTITY=1 ;;
     --assumeRole) shift; [ "$1" != "--end-of-args--" ] || fail "--assumeRole needs a role name."; ASSUME_ROLE="$1" ;;
     --assumeRole=*) ASSUME_ROLE="${1#--assumeRole=}" ;;
     *) set -- "$@" "$1" ;;
@@ -125,18 +123,16 @@ pnpm install || fail "pnpm install failed.
   If platform-pkg-dev is not published yet, point at a local checkout instead:
     pnpm add -D platform-pkg-dev@link:/path/to/platform-pkg-dev && pnpm dev init"
 
-# When --identity and --assumeRole are given, assume the GDS role and authorise
-# CodeArtifact before anything tries to pull from the private registry.  The
-# first install above only fetched platform-pkg-dev (from the bootstrap manifest),
-# so its CLI is on PATH but no private dependencies have been resolved yet.
-if [ -n "$IDENTITY" ] && [ -n "$ASSUME_ROLE" ]; then
+# When --assumeRole is given, assume the GDS role and authorise CodeArtifact
+# before anything tries to pull from the private registry.  The first install
+# above only fetched platform-pkg-dev (from the bootstrap manifest), so its CLI
+# is on PATH but no private dependencies have been resolved yet.
+if [ -n "$ASSUME_ROLE" ]; then
   echo "platform-pkg-dev: assuming role $ASSUME_ROLE"
   pnpm dev assumeRole "$ASSUME_ROLE" --verify || fail "Could not assume role $ASSUME_ROLE."
 
   echo "platform-pkg-dev: authorising CodeArtifact"
   pnpm dev codeArtifactAuthorise --role "$ASSUME_ROLE" || fail "Could not authorise CodeArtifact."
-elif [ -n "$IDENTITY" ] || [ -n "$ASSUME_ROLE" ]; then
-  fail "--identity and --assumeRole must be used together."
 fi
 
 # --pkg-dev first so an explicit one from the caller still wins: the spec init
