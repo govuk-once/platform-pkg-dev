@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { bold, dim, error, fail, info, ok, step, warn } from '../lib/log.js';
+import { assumeRole, authoriseCodeArtifact, verifyCredentials } from '../lib/gds.js';
+import { CODE_ARTIFACT_ACCOUNT, NODE_MAJOR } from '../versions.js';
+import { readAwsConfig, resolveRole } from './synth.js';
 import { applyDrift, computeDrift, describeDrift, type Manifest } from '../lib/pins.js';
 import { EXTEND_FILE, ExtendError } from '../lib/pre-commit.js';
 import { installDependencies } from '../lib/install.js';
@@ -34,6 +37,8 @@ Options
   --check       Report drift and exit non-zero without changing anything
   --no-install  Do not run pnpm install after rewriting package.json
   --no-upgrade  Do not check the registry for a newer platform-pkg-dev
+  --env <name>  Which role to assume for CodeArtifact auth (default: the only one)
+  --role <name> Assume this role directly, ignoring the configured ones
   --cwd <path>  Run against this package instead of the current directory
   --help        Show this message
 
@@ -59,6 +64,8 @@ export async function runSync(argv: readonly string[], context: RunContext): Pro
       check: { type: 'boolean' },
       'no-install': { type: 'boolean' },
       'no-upgrade': { type: 'boolean' },
+      env: { type: 'string' },
+      role: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: false,
@@ -67,6 +74,14 @@ export async function runSync(argv: readonly string[], context: RunContext): Pro
   if (values.help === true) {
     info(SYNC_USAGE);
     return 0;
+  }
+
+  const nodeMajor = Number.parseInt(process.versions.node.split('.')[0] ?? '0', 10);
+  if (nodeMajor < NODE_MAJOR) {
+    fail(
+      `Node ${NODE_MAJOR} or newer is required (running ${process.versions.node}).`,
+      `nvm install ${NODE_MAJOR} && nvm use ${NODE_MAJOR}`,
+    );
   }
 
   const manifestPath = join(context.cwd, 'package.json');
@@ -83,6 +98,14 @@ export async function runSync(argv: readonly string[], context: RunContext): Pro
     manifest = JSON.parse(raw) as Manifest;
   } catch (cause) {
     fail(`${manifestPath} is not valid JSON.`, (cause as Error).message);
+  }
+
+  // When the package declares AWS roles, assume the role and authorise
+  // CodeArtifact before any pnpm install — the private registry returns 401/404
+  // without a valid token in ~/.npmrc.  Skipped for --check (read-only) and
+  // --no-install (nothing to authenticate for).
+  if (values.check !== true && values['no-install'] !== true) {
+    ensureCodeArtifactAuth(context.cwd, { role: values.role, env: values.env });
   }
 
   // Upgrading without installing would leave package.json claiming a version
@@ -312,6 +335,31 @@ async function readInstalledVersion(): Promise<string | undefined> {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Assumes a GDS role and authorises CodeArtifact so pnpm install can reach the
+ * private registry.  A no-op when the package has no once.aws.roles — those
+ * packages do not pull from CodeArtifact.
+ */
+function ensureCodeArtifactAuth(
+  cwd: string,
+  options: { role?: string | undefined; env?: string | undefined },
+): void {
+  const config = readAwsConfig(cwd);
+  const roles = config.roles ?? {};
+  if (Object.keys(roles).length === 0 && options.role === undefined) return;
+
+  const role = resolveRole(config, options);
+
+  step(`Assuming ${role}`);
+  const credentials = assumeRole(role);
+  verifyCredentials(credentials);
+  ok(`Assumed ${role}`);
+
+  step('Authorising CodeArtifact');
+  authoriseCodeArtifact(CODE_ARTIFACT_ACCOUNT, credentials);
+  ok('CodeArtifact authorised');
 }
 
 /** Reads a file a package may legitimately not have yet. */

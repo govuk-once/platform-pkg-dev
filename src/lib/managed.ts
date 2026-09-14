@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { renderFormatConfig, FORMAT_CONFIG_FILE } from './format.js';
 import { CONFIG_FILE, renderConfig } from './pre-commit.js';
 import { planTemplateDir, substitute, targetName, TEMPLATES_ROOT } from './render.js';
-import { NODE_MAJOR } from '../versions.js';
+import { NODE_MAJOR, CODE_ARTIFACT_ACCOUNT } from '../versions.js';
 
 /**
  * Files platform-pkg-dev owns outright in every package.
@@ -41,6 +41,7 @@ const ROOT_ONLY = [
   '.githooks/',
   '.vscode/',
   '.nvmrc',
+  '.npmrc',
   '.pre-commit-config.yaml',
   '.claude/',
   '.env.example',
@@ -83,7 +84,7 @@ export interface ManagedFile {
 
 /** Variables the managed templates substitute. */
 function templateVars(): Record<string, string> {
-  return { nodeMajor: String(NODE_MAJOR) };
+  return { nodeMajor: String(NODE_MAJOR), codeArtifactAccount: String(CODE_ARTIFACT_ACCOUNT) };
 }
 
 /**

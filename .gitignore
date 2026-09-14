@@ -5,3 +5,4 @@ coverage/
 .DS_Store
 .claude
 .pre-commit-config.yaml
+.npmrc

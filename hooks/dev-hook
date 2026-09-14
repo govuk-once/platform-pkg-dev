@@ -38,8 +38,10 @@ fi
 # .pre-commit-config.yaml up front, so a stale config would run the wrong hooks
 # and only report itself out of date afterwards.
 #
-# Skipped when DEV_BIN is set: that means this is platform-pkg-dev itself, which
-# is the source of the pins rather than a consumer of them.
+# Consumer packages: check the pins and auto-sync if stale.
+# platform-pkg-dev itself (DEV_BIN is set): rebuild the generated files the hook
+# chain needs (.pre-commit-config.yaml, .npmrc, .nvmrc) from the current
+# templates and versions.json, without installing or checking for upgrades.
 if [ -z "${DEV_BIN:-}" ]; then
   if ! "$BIN" sync --check; then
     echo "platform-pkg-dev: managed files are out of date - running 'dev sync'." >&2
@@ -49,6 +51,11 @@ if [ -z "${DEV_BIN:-}" ]; then
     fi
     # Stage whatever sync touched so the commit includes the updates.
     git add -u
+  fi
+else
+  if ! node "$BIN" sync --no-install --no-upgrade; then
+    echo "platform-pkg-dev: could not rebuild managed files - $HOOK blocked." >&2
+    exit 1
   fi
 fi
 

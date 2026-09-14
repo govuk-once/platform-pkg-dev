@@ -104,6 +104,59 @@ export function assumeRole(role: string): Record<string, string> {
 }
 
 /**
+ * Authenticates the local npm package manager against the CodeArtifact repository.
+ *
+ * Fetches a short-lived auth token from AWS and updates the user's global `.npmrc`
+ * so pnpm and npm can pull private workspace dependencies from the central registry.
+ *
+ * The caller must pass credentials from a prior `assumeRole` call: the AWS CLI
+ * needs them to request the CodeArtifact token, and inheriting `process.env` would
+ * silently use whatever profile or SSO session happens to be active - which may be
+ * a different account.
+ */
+export function authoriseCodeArtifact(
+  codeArtifactAccount: number,
+  credentials: Record<string, string>,
+): void {
+  if (which('aws') === undefined) {
+    fail('aws is not on PATH.', 'Install the AWS CLI: https://aws.amazon.com/cli/');
+  }
+
+  const result = spawnSync(
+    'aws',
+    [
+      'codeartifact',
+      'login',
+      '--tool',
+      'npm',
+      '--repository',
+      'registry-prod-repo',
+      '--domain',
+      'registry-prod',
+      '--domain-owner',
+      String(codeArtifactAccount),
+      '--region',
+      'eu-west-2',
+    ],
+    {
+      encoding: 'utf8',
+      env: { ...process.env, ...credentials },
+    },
+  );
+
+  if (result.error !== undefined) {
+    fail(`Failed to run aws codeartifact login: ${result.error.message}`);
+  }
+
+  if ((result.status ?? 1) !== 0) {
+    fail(
+      'Could not authorise CodeArtifact.',
+      `${(result.stderr ?? '').trim()}\n  ${dim('Are the credentials still valid?')}`,
+    );
+  }
+}
+
+/**
  * Confirms the credentials actually work before anything long-running starts.
  *
  * A role can be assumed and still be unusable - off-VPN is the common one -

@@ -17,6 +17,12 @@ import { PRE_COMMIT_USAGE, PRE_PUSH_USAGE, runPreCommit, runPrePush } from './co
 import { HOOKS_USAGE, runHooks } from './commands/hooks.js';
 import { CDK_USAGE, runCdkInit } from './commands/cdk.js';
 import { SYNTH_USAGE, runSynth } from './commands/synth.js';
+import {
+  ASSUME_ROLE_USAGE,
+  CODE_ARTIFACT_USAGE,
+  runAssumeRole,
+  runCodeArtifactAuthorise,
+} from './commands/gds.js';
 import { SCAN_USAGE, runScan } from './commands/scan.js';
 import { inspectEnvironment, reportPreflight } from './lib/preflight.js';
 import { bold, dim, error, fail, info } from './lib/log.js';
@@ -42,6 +48,9 @@ Commands
   cdk:init     Scaffold the CDK app: cdk init, then platform-pkg-dev's stack on top
   synth        Assume the GDS role, then synthesise the CDK app
   scan         Synthesise, then run checkov over the templates
+  assumeRole   Assume a GDS role and print credentials
+  codeArtifactAuthorise
+               Assume a role and authorise npm against CodeArtifact
   spell         Run CSpell to look for spelling issues
   doctor       Verify the pinned tool versions on this machine
   write-markers  Write the dist/esm and dist/cjs package.json type markers
@@ -107,6 +116,8 @@ async function main(argv: readonly string[]): Promise<number> {
       await runInit(rest);
       return 0;
 
+    case 'assumeRole':
+    case 'codeArtifactAuthorise':
     case 'build':
     case 'test':
     case 'test:watch':
@@ -127,6 +138,9 @@ async function main(argv: readonly string[]): Promise<number> {
       const context: RunContext = { cwd: resolveWorkingDir(cwd) };
 
       if (command === 'cdk:init') return await runCdkInit(toolArgs, context);
+      if (command === 'assumeRole') return await runAssumeRole(toolArgs, context);
+      if (command === 'codeArtifactAuthorise')
+        return await runCodeArtifactAuthorise(toolArgs, context);
       if (command === 'synth') return await runSynth(toolArgs, context);
       if (command === 'scan') return await runScan(toolArgs, context);
 
@@ -163,6 +177,8 @@ async function main(argv: readonly string[]): Promise<number> {
       else if (topic === 'cdk:init' || topic === 'cdk') info(CDK_USAGE);
       else if (topic === 'synth') info(SYNTH_USAGE);
       else if (topic === 'scan') info(SCAN_USAGE);
+      else if (topic === 'assumeRole') info(ASSUME_ROLE_USAGE);
+      else if (topic === 'codeArtifactAuthorise') info(CODE_ARTIFACT_USAGE);
       else info(USAGE);
       return 0;
     }
