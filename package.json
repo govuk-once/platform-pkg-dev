@@ -44,8 +44,7 @@
     "format": "oxfmt",
     "pre-commit": "pnpm build && DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-commit",
     "pre-push": "pre-commit run --hook-stage pre-push --all-files",
-    "prepare": "./hooks/setup-git-config 2>/dev/null || true",
-    "postinstall": "node dist/cli.js hooks install 2>/dev/null || true",
+    "prepare": "pnpm run build && ./hooks/setup-git-config && node dist/cli.js hooks install 2>/dev/null || true",
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
