@@ -351,7 +351,6 @@ async function scaffold(
       force: options.force || bootstrapped,
     }),
   );
-  console.log(vars);
 
   reports.push(
     await renderTemplateDir('base', targetDir, vars, {

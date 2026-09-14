@@ -21,7 +21,7 @@ set -eu
 # local checkout before platform-pkg-dev is published. The defaults are the real pins,
 # and platform-pkg-dev's test suite checks them against versions.json.
 NODE_MAJOR=${NODE_MAJOR:-24}
-PNPM=${PNPM:-pnpm@11.25.0}
+PNPM=${PNPM:-pnpm@12.4.1}
 PKG_DEV=${PKG_DEV:-^0.0.4}
 
 fail() { echo "platform-pkg-dev: $1" >&2; exit 1; }
@@ -87,6 +87,60 @@ command -v node >/dev/null 2>&1 || fail "node is not installed. Install Node ${N
 major=$(node -p 'process.versions.node.split(".")[0]')
 [ "$major" -ge "$NODE_MAJOR" ] || fail "Node ${NODE_MAJOR}+ required, found $(node -v)."
 
+if command -v corepack >/dev/null 2>&1; then
+  corepack enable pnpm >/dev/null 2>&1 || true
+fi
+
+command -v pnpm >/dev/null 2>&1 || fail "pnpm is not available. Run 'corepack enable pnpm', then re-run."
+
+want=${PNPM#pnpm@}
+have=$(pnpm --version 2>/dev/null || echo unknown)
+if [ "$have" != "$want" ]; then
+  fail "pnpm ${want} is pinned but ${have} is running.
+  corepack prepare ${PNPM} --activate"
+fi
+
+# When --assumeRole is given, assume the GDS role and authorise CodeArtifact
+# before writing any files.  platform-pkg-dev itself lives on CodeArtifact, so
+# nothing can proceed without a valid token.  The CLI is not installed yet, so
+# this calls gds-cli and the AWS CLI directly — the same commands the CLI wraps.
+if [ -n "$ASSUME_ROLE" ]; then
+  command -v gds-cli >/dev/null 2>&1 || fail "gds-cli is not on PATH. Install it: https://github.com/alphagov/gds-cli"
+  command -v aws >/dev/null 2>&1 || fail "aws is not on PATH. Install the AWS CLI: https://aws.amazon.com/cli/"
+
+  echo "platform-pkg-dev: assuming role $ASSUME_ROLE"
+  CREDS=$(gds-cli aws "$ASSUME_ROLE" -e) || fail "Could not assume role $ASSUME_ROLE. Are you on the VPN?"
+
+  # Parse credentials safely — no eval.
+  # Strip optional `export ` prefix, split on first `=`, then strip surrounding
+  # quotes (single or double) from the value.  Mirrors the Node parseCredentials
+  # function in src/lib/gds.ts.
+  extract_var() {
+    echo "$CREDS" | sed -n "s/^\\(export \\)\\{0,1\\}$1=//p" | sed "s/;$//;s/^['\"]//;s/['\"]$//"
+  }
+
+  export AWS_ACCESS_KEY_ID="$(extract_var AWS_ACCESS_KEY_ID)"
+  export AWS_SECRET_ACCESS_KEY="$(extract_var AWS_SECRET_ACCESS_KEY)"
+  export AWS_SESSION_TOKEN="$(extract_var AWS_SESSION_TOKEN)"
+
+  [ -n "$AWS_ACCESS_KEY_ID" ] || fail "gds-cli returned no usable credentials for $ASSUME_ROLE."
+
+  echo "platform-pkg-dev: verifying credentials"
+  echo "platform-pkg-dev: AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:+(set)}" >&2
+  echo "platform-pkg-dev: AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:+(set)}" >&2
+  echo "platform-pkg-dev: AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:+(set)}" >&2
+  STS_OUT=$(aws sts get-caller-identity 2>&1) || fail "Credentials are not usable: $STS_OUT"
+
+  echo "platform-pkg-dev: authorising CodeArtifact"
+  aws codeartifact login \
+    --tool npm \
+    --namespace govuk-connect \
+    --repository registry-prod-repo \
+    --domain registry-prod \
+    --domain-owner 904690835784 \
+    --region eu-west-2 || fail "Could not authorise CodeArtifact."
+fi
+
 # corepack reads packageManager from package.json, so the manifest has to exist
 # before pnpm is invoked - otherwise corepack picks its own default version and
 # then refuses to switch.
@@ -103,50 +157,6 @@ else
   "once": { "bootstrap": true }
 }
 JSON
-fi
-
-if command -v corepack >/dev/null 2>&1; then
-  corepack enable pnpm >/dev/null 2>&1 || true
-fi
-
-command -v pnpm >/dev/null 2>&1 || fail "pnpm is not available. Run 'corepack enable pnpm', then re-run."
-
-want=${PNPM#pnpm@}
-have=$(pnpm --version 2>/dev/null || echo unknown)
-if [ "$have" != "$want" ]; then
-  fail "pnpm ${want} is pinned but ${have} is running.
-  corepack prepare ${PNPM} --activate"
-fi
-
-# When --assumeRole is given, assume the GDS role and authorise CodeArtifact
-# before the first install.  platform-pkg-dev itself lives on CodeArtifact, so
-# pnpm cannot fetch it without a valid token.  The CLI is not installed yet, so
-# this calls gds-cli and the AWS CLI directly — the same commands the CLI wraps.
-if [ -n "$ASSUME_ROLE" ]; then
-  command -v gds-cli >/dev/null 2>&1 || fail "gds-cli is not on PATH. Install it: https://github.com/alphagov/gds-cli"
-  command -v aws >/dev/null 2>&1 || fail "aws is not on PATH. Install the AWS CLI: https://aws.amazon.com/cli/"
-
-  echo "platform-pkg-dev: assuming role $ASSUME_ROLE"
-  CREDS=$(gds-cli aws "$ASSUME_ROLE" -e) || fail "Could not assume role $ASSUME_ROLE. Are you on the VPN?"
-
-  # Parse credentials safely — no eval.  Extract only the AWS_ variables we need.
-  export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | sed -n "s/^export AWS_ACCESS_KEY_ID='\\(.*\\)'/\\1/p")
-  export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | sed -n "s/^export AWS_SECRET_ACCESS_KEY='\\(.*\\)'/\\1/p")
-  export AWS_SESSION_TOKEN=$(echo "$CREDS" | sed -n "s/^export AWS_SESSION_TOKEN='\\(.*\\)'/\\1/p")
-
-  [ -n "$AWS_ACCESS_KEY_ID" ] || fail "gds-cli returned no usable credentials for $ASSUME_ROLE."
-
-  echo "platform-pkg-dev: verifying credentials"
-  aws sts get-caller-identity >/dev/null 2>&1 || fail "Credentials are not usable. Check the VPN."
-
-  echo "platform-pkg-dev: authorising CodeArtifact"
-  aws codeartifact login \
-    --tool npm \
-    --namespace govuk-connect \
-    --repository registry-prod-repo \
-    --domain registry-prod \
-    --domain-owner 904690835784 \
-    --region eu-west-2 || fail "Could not authorise CodeArtifact."
 fi
 
 echo "platform-pkg-dev: installing (pnpm ${have})"
