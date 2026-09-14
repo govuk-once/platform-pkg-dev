@@ -22,7 +22,7 @@ set -eu
 # and platform-pkg-dev's test suite checks them against versions.json.
 NODE_MAJOR=${NODE_MAJOR:-24}
 PNPM=${PNPM:-pnpm@11.25.0}
-PKG_DEV=${PKG_DEV:-^0.0.3}
+PKG_DEV=${PKG_DEV:-^0.0.4}
 
 fail() { echo "platform-pkg-dev: $1" >&2; exit 1; }
 
