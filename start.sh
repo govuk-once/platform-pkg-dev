@@ -168,7 +168,9 @@ pnpm install || fail "pnpm install failed.
 # records must match the one actually installed above, or the next install
 # fetches a different platform-pkg-dev than the one that just ran.
 echo "platform-pkg-dev: running dev init"
-pnpm dev init --pkg-dev "$PKG_DEV" "$@"
+INIT_ARGS="--pkg-dev $PKG_DEV"
+[ -n "$ASSUME_ROLE" ] && INIT_ARGS="$INIT_ARGS --assumeRole $ASSUME_ROLE"
+pnpm dev init $INIT_ARGS "$@"
 
 # init rewrites package.json with the package's real dependency set - oxlint,
 # oxfmt, the type-aware engine - so the first install only ever got platform-pkg-dev.
@@ -177,5 +179,12 @@ pnpm install
 
 echo "platform-pkg-dev: wiring git hooks"
 pnpm dev hooks install
+
+echo 'As a shortcut to govuk-connect/dev add this to your .zshrc / .bashrc:
+
+dev() {
+  ./node_modules/.bin/dev "$@"
+}
+'
 
 echo "platform-pkg-dev: done."

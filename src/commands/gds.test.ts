@@ -49,21 +49,21 @@ describe('runAssumeRole', () => {
   });
 
   it('assumes the named role and returns 0', async () => {
-    const code = await runAssumeRole(['once-udp-development-admin'], CONTEXT);
+    const code = await runAssumeRole(['connect-development-admin'], CONTEXT);
 
-    expect(assumeRole).toHaveBeenCalledWith('once-udp-development-admin');
+    expect(assumeRole).toHaveBeenCalledWith('connect-development-admin');
     expect(verifyCredentials).not.toHaveBeenCalled();
     expect(code).toBe(0);
   });
 
   it('verifies credentials when --verify is passed', async () => {
-    await runAssumeRole(['once-udp-development-admin', '--verify'], CONTEXT);
+    await runAssumeRole(['connect-development-admin', '--verify'], CONTEXT);
 
     expect(verifyCredentials).toHaveBeenCalledWith(FAKE_CREDENTIALS);
   });
 
   it('prints export statements when --export is passed', async () => {
-    await runAssumeRole(['once-udp-development-admin', '--export'], CONTEXT);
+    await runAssumeRole(['connect-development-admin', '--export'], CONTEXT);
 
     expect(info).toHaveBeenCalledWith(expect.stringContaining('export AWS_ACCESS_KEY_ID='));
     expect(info).toHaveBeenCalledWith(expect.stringContaining('export AWS_SECRET_ACCESS_KEY='));
@@ -80,9 +80,9 @@ describe('runCodeArtifactAuthorise', () => {
   });
 
   it('assumes, verifies, then authorises CodeArtifact', async () => {
-    const code = await runCodeArtifactAuthorise(['--role', 'once-udp-development-admin'], CONTEXT);
+    const code = await runCodeArtifactAuthorise(['--role', 'connect-development-admin'], CONTEXT);
 
-    expect(assumeRole).toHaveBeenCalledWith('once-udp-development-admin');
+    expect(assumeRole).toHaveBeenCalledWith('connect-development-admin');
     expect(verifyCredentials).toHaveBeenCalledWith(FAKE_CREDENTIALS);
     expect(authoriseCodeArtifact).toHaveBeenCalledWith(904690835784, FAKE_CREDENTIALS);
     expect(code).toBe(0);

@@ -175,9 +175,18 @@ importers:
       cspell:
         specifier: 10.3.0
         version: 10.3.0
+      oxfmt:
+        specifier: 0.63.0
+        version: 0.63.0
+      oxlint:
+        specifier: 1.78.0
+        version: 1.78.0(oxlint-tsgolint@7.0.2001)
       typescript:
         specifier: 7.0.2
         version: 7.0.2
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(vite@8.3.0(@types/node@24.13.3)(yaml@2.9.0))
       yaml:
         specifier: 2.9.0
         version: 2.9.0
@@ -188,18 +197,9 @@ importers:
       aws-cdk:
         specifier: 2.1136.0
         version: 2.1136.0
-      oxfmt:
-        specifier: 0.63.0
-        version: 0.63.0
-      oxlint:
-        specifier: 1.78.0
-        version: 1.78.0(oxlint-tsgolint@7.0.2001)
       oxlint-tsgolint:
         specifier: 7.0.2001
         version: 7.0.2001
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@types/node@24.13.3)(vite@8.3.0(@types/node@24.13.3)(yaml@2.9.0))
 
 packages:
 

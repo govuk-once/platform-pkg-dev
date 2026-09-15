@@ -23,7 +23,7 @@ When the package pulls from the private CodeArtifact registry, pass
 `--assumeRole` to assume a GDS role and authorise CodeArtifact before install:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity --assumeRole once-udp-development-admin
+curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity --assumeRole connect-development-admin
 ```
 
 It checks Node, pins pnpm through corepack, writes a throwaway `package.json`,

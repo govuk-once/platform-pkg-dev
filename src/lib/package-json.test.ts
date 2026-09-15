@@ -5,6 +5,7 @@ import { CDK, NODE_MAJOR, PACKAGE_MANAGER, PUBLISH_CONFIG_REGISTRY } from '../ve
 const base = {
   packageName: 'connect-org',
   team: 'identity',
+  assumeRole: 'connect-development-admin',
   cdk: false,
   isPackage: false,
   isWorkspace: false,
@@ -44,7 +45,10 @@ describe('buildPackageJson', () => {
     expect(manifest['engines']).toEqual({ node: `>=${NODE_MAJOR}` });
     expect(manifest['packageManager']).toBe(PACKAGE_MANAGER);
     expect(manifest['publishConfig']).toStrictEqual({ registry: PUBLISH_CONFIG_REGISTRY });
-    expect(manifest['once']).toEqual({ team: 'identity' });
+    expect(manifest['once']).toEqual({
+      team: 'identity',
+      aws: { region: 'eu-west-2', roles: { dev: 'connect-development-admin' } },
+    });
     expect(manifest).toStrictEqual({
       name: 'connect-org',
       version: '0.0.0',
@@ -65,7 +69,10 @@ describe('buildPackageJson', () => {
       publishConfig: {
         registry: PUBLISH_CONFIG_REGISTRY,
       },
-      once: { team: 'identity' },
+      once: {
+        team: 'identity',
+        aws: { region: 'eu-west-2', roles: { dev: 'connect-development-admin' } },
+      },
     });
   });
 

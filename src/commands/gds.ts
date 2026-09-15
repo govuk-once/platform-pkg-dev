@@ -18,7 +18,7 @@ Options
 Assumes the named GDS role via gds-cli and prints the credentials. With
 --export the output is suitable for eval:
 
-  eval "$(dev assumeRole once-udp-development-admin --export)"
+  eval "$(dev assumeRole connect-development-admin --export)"
 
 Credentials are never written to disk and never placed in a process argument.
 `;

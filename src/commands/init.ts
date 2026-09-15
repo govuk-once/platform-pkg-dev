@@ -68,6 +68,7 @@ export async function runInit(argv: readonly string[]): Promise<void> {
       dir: { type: 'string' },
       name: { type: 'string' },
       team: { type: 'string' },
+      assumeRole: { type: 'string' },
       'pkg-dev': { type: 'string' },
       cdk: { type: 'boolean' },
       'no-cdk': { type: 'boolean' },
@@ -139,6 +140,7 @@ export async function runInit(argv: readonly string[]): Promise<void> {
 type InitFlags = {
   name?: string | undefined;
   team?: string | undefined;
+  assumeRole?: string | undefined;
   cdk?: boolean | undefined;
   'no-cdk'?: boolean | undefined;
   package?: boolean | undefined;
@@ -166,6 +168,12 @@ async function collectAnswers(
   isMember: boolean,
 ): Promise<ScaffoldAnswers> {
   const defaultName = basename(targetDir);
+
+  const assumeRole =
+    flags.assumeRole ??
+    (acceptDefaults
+      ? fail('--assumeRole is required when using --yes.')
+      : await ask('AWS role to assume', { flag: '--assumeRole' }));
 
   const packageName =
     flags.name ??
@@ -210,7 +218,7 @@ async function collectAnswers(
           flag: '--workspace',
         }));
 
-  return { packageName, team, cdk, isPackage, isWorkspace, isMember };
+  return { packageName, team, assumeRole, cdk, isPackage, isWorkspace, isMember };
 }
 
 /**
@@ -308,6 +316,7 @@ async function scaffold(
   const vars = {
     packageName: answers.packageName,
     team: answers.team,
+    assumeRole: answers.assumeRole,
     cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json' : '',
     codeArtifactAccount: String(CODE_ARTIFACT_ACCOUNT),
     // Carries its own surrounding blank lines so the README is valid markdown
