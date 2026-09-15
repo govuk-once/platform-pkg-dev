@@ -47,19 +47,21 @@ fetches each at a pinned revision into its own isolated environment.
 
 ## Commands
 
-| Command               | What it does                                  |
-| --------------------- | --------------------------------------------- |
-| `pnpm dev build`      | Compile with the pinned TypeScript            |
-| `pnpm dev test`       | Run Vitest once                               |
-| `pnpm dev test:watch` | Re-run affected tests as you save             |
-| `pnpm dev lint`       | Run oxlint (type-aware) with the shared rules |
-| `pnpm dev format`     | Run oxfmt (`--check` to verify only)          |
-| `pnpm dev typecheck`  | Type-check without emitting                   |
-| `pnpm dev sync`       | Re-pin managed deps, then `pnpm install`      |
-| `pnpm dev doctor`     | Check the pinned tool versions are installed  |
-| `pnpm dev pre-commit` | Run the commit-stage hooks now                |
-| `pnpm dev pre-push`   | Run the push-stage hooks now                  |
-| {{cdkSection}}        |
+| Command                                     | What it does                                  |
+| ------------------------------------------- | --------------------------------------------- |
+| `pnpm dev build`                            | Compile with the pinned TypeScript            |
+| `pnpm dev test`                             | Run Vitest once                               |
+| `pnpm dev test:watch`                       | Re-run affected tests as you save             |
+| `pnpm dev lint`                             | Run oxlint (type-aware) with the shared rules |
+| `pnpm dev format`                           | Run oxfmt (`--check` to verify only)          |
+| `pnpm dev typecheck`                        | Type-check without emitting                   |
+| `pnpm dev sync`                             | Re-pin managed deps, then `pnpm install`      |
+| `pnpm dev doctor`                           | Check the pinned tool versions are installed  |
+| `pnpm dev pre-commit`                       | Run the commit-stage hooks now                |
+| `pnpm dev pre-push`                         | Run the push-stage hooks now                  |
+| `pnpm dev assumeRole <role>`                | Assume a GDS role and print credentials       |
+| `pnpm dev codeArtifactAuthorise --role <r>` | Assume role and authorise CodeArtifact        |
+| {{cdkSection}}                              |
 
 ## Git hooks
 

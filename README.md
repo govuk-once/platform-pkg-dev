@@ -16,11 +16,19 @@ not installed until a `package.json` exists that depends on it. `start.sh`
 closes that loop:
 
 ```sh
-curl -H "Authorization: token $GITHUB_TOKEN" -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity
+curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity
+```
+
+When the package pulls from the private CodeArtifact registry, pass
+`--assumeRole` to assume a GDS role and authorise CodeArtifact before install:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity --assumeRole once-udp-development-admin
 ```
 
 It checks Node, pins pnpm through corepack, writes a throwaway `package.json`,
-installs, runs `dev init` (which replaces that manifest with the real one), and
+installs, assumes the role and authorises CodeArtifact (when `--assumeRole` is
+given), runs `dev init` (which replaces that manifest with the real one), and
 installs again for the dependency set `init` added.
 
 `--dir` names a folder to create. Without it an empty directory is used as-is
@@ -194,17 +202,19 @@ but over files; this is the one to trust before a deployment.
 ## Toolchain commands
 
 ```sh
-pnpm dev build      # tsc, dual ESM/CJS when both tsconfigs are present
-pnpm dev test       # vitest, once
-pnpm dev test:watch # vitest, re-running affected tests on save
-pnpm dev lint       # oxlint, type-aware, with the shared Connect config
-pnpm dev format     # oxfmt (--check to verify without writing)
-pnpm dev typecheck  # tsc --noEmit
-pnpm dev sync           # re-pin managed deps, then pnpm install
-pnpm dev cdk:init       # scaffold the CDK app - see below
-pnpm dev hooks install  # wire .githooks and pre-build the hook environments
-pnpm dev doctor         # verify the pinned tool versions on this machine
-pnpm dev write-markers  # dist/{esm,cjs}/package.json type markers
+pnpm dev build                # tsc, dual ESM/CJS when both tsconfigs are present
+pnpm dev test                 # vitest, once
+pnpm dev test:watch           # vitest, re-running affected tests on save
+pnpm dev lint                 # oxlint, type-aware, with the shared Connect config
+pnpm dev format               # oxfmt (--check to verify without writing)
+pnpm dev typecheck            # tsc --noEmit
+pnpm dev sync                 # re-pin managed deps, then pnpm install
+pnpm dev cdk:init             # scaffold the CDK app - see below
+pnpm dev hooks install        # wire .githooks and pre-build the hook environments
+pnpm dev doctor               # verify the pinned tool versions on this machine
+pnpm dev write-markers        # dist/{esm,cjs}/package.json type markers
+pnpm dev assumeRole <role>    # assume a GDS role and print credentials
+pnpm dev codeArtifactAuthorise --role <role>  # assume role + authorise CodeArtifact
 ```
 
 Under pnpm, only _direct_ dependencies get their binaries linked into

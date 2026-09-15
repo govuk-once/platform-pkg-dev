@@ -33,6 +33,9 @@ repos:
       - id: mixed-line-ending
         args: [--fix=lf]
       - id: check-yaml
+        # pnpm v9+ uses multi-document YAML in its lockfile, which check-yaml
+        # rejects ("expected a single document in the stream").
+        exclude: '(^|/)pnpm-lock\.yaml$'
       - id: check-json
         # JSONC by design - oxlint, VS Code and tsc all accept comments, but
         # check-json is strict JSON and would reject them.
