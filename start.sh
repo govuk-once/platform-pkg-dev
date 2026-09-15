@@ -1,8 +1,7 @@
 #!/bin/sh
 # Bootstrap a Connect package.
 #
-#   curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh
-#   curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh)" -- --dir connect-foo --name connect-foo --team identity --assumeRole connect-development-admin
 #
 # --dir names a folder to create and work in. Without it, an empty directory is
 # used as-is and a non-empty one prompts, so piping this into the wrong place

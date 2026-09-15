@@ -16,15 +16,12 @@ not installed until a `package.json` exists that depends on it. `start.sh`
 closes that loop:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh)" -- --dir connect-foo --name connect-foo --team identity --assumeRole connect-development-admin
 ```
 
-When the package pulls from the private CodeArtifact registry, pass
-`--assumeRole` to assume a GDS role and authorise CodeArtifact before install:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh | sh -s -- --dir connect-foo --name connect-foo --team identity --assumeRole connect-development-admin
-```
+`--assumeRole` assumes a GDS role and authorises CodeArtifact before install,
+so pnpm can pull `@govuk-connect` packages from the private registry. The role
+is also written into the generated `package.json` under `once.aws.roles`.
 
 It checks Node, pins pnpm through corepack, writes a throwaway `package.json`,
 installs, assumes the role and authorises CodeArtifact (when `--assumeRole` is
@@ -53,9 +50,7 @@ The three pins are overridable from the environment, so point `PKG_DEV` at a
 local checkout and it works offline:
 
 ```sh
-PKG_DEV=link:../platform-pkg-dev \
-  sh /platform-pkg-dev/start.sh \
-  --local --dir connect-trial --name connect-trial --team connect-team
+bash platform-pkg-dev/start.sh --local --dir connect-trial --name connect-trial --team connect-team --assumeRole connect-development-admin
 ```
 
 The `link:` path is resolved from the **new package directory**, not from where
