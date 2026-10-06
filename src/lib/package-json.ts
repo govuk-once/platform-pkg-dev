@@ -14,7 +14,7 @@ export interface ScaffoldAnswers {
   /** Member of a workspace: inherits the root's tooling rather than its own. */
   readonly isMember?: boolean;
   /** GDS role name for assuming AWS credentials and authorising CodeArtifact. */
-  readonly assumeRole: string;
+  readonly role: string;
 }
 
 /** npm's own name rules, narrowed - no scopes, no uppercase, no leading punctuation. */
@@ -87,7 +87,7 @@ export function buildPackageJson(answers: ScaffoldAnswers, pkgDevSpec: string): 
     },
     once: {
       team: answers.team,
-      aws: { region: 'eu-west-2', roles: { dev: answers.assumeRole } },
+      aws: { region: 'eu-west-2', roles: { dev: answers.role } },
     },
   };
 

@@ -5,7 +5,7 @@ import { CDK, NODE_MAJOR, PACKAGE_MANAGER, PUBLISH_CONFIG_REGISTRY } from '../ve
 const base = {
   packageName: 'connect-org',
   team: 'identity',
-  assumeRole: 'connect-development-admin',
+  role: 'connect-development-admin',
   cdk: false,
   isPackage: false,
   isWorkspace: false,

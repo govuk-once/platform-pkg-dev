@@ -1,7 +1,7 @@
 #!/bin/sh
 # Bootstrap a Connect package.
 #
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh)" -- --dir connect-foo --name connect-foo --team identity --assumerole connect-development-admin
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/start.sh)" -- --dir connect-foo --name connect-foo --team identity --role connect-development-admin
 #
 # --dir names a folder to create and work in. Without it, an empty directory is
 # used as-is and a non-empty one prompts, so piping this into the wrong place
@@ -21,7 +21,7 @@ set -eu
 # and platform-pkg-dev's test suite checks them against versions.json.
 NODE_MAJOR=${NODE_MAJOR:-24}
 PNPM=${PNPM:-pnpm@12.4.1}
-PKG_DEV=${PKG_DEV:-^0.0.5}
+PKG_DEV=${PKG_DEV:-^0.0.6}
 
 fail() { echo "platform-pkg-dev: $1" >&2; exit 1; }
 
@@ -36,7 +36,7 @@ if [ "${1:-}" = "--local" ]; then
   shift
 fi
 
-# Pull --dir and --assumerole out of the arguments; everything else is
+# Pull --dir and --role out of the arguments; everything else is
 # forwarded to `dev init`.
 # The marker keeps quoting intact while rebuilding "$@" in POSIX sh.
 DIR=""
@@ -46,8 +46,8 @@ while [ "$1" != "--end-of-args--" ]; do
   case "$1" in
     --dir) shift; [ "$1" != "--end-of-args--" ] || fail "--dir needs a folder name."; DIR="$1" ;;
     --dir=*) DIR="${1#--dir=}" ;;
-    --assumerole) shift; [ "$1" != "--end-of-args--" ] || fail "--assumerole needs a role name."; ASSUME_ROLE="$1" ;;
-    --assumerole=*) ASSUME_ROLE="${1#--assumerole=}" ;;
+    --role) shift; [ "$1" != "--end-of-args--" ] || fail "--role needs a role name."; ASSUME_ROLE="$1" ;;
+    --role=*) ASSUME_ROLE="${1#--role=}" ;;
     *) set -- "$@" "$1" ;;
   esac
   shift
@@ -76,6 +76,8 @@ if [ "$DIR" != "." ]; then
   echo "platform-pkg-dev: working in $(pwd)"
 fi
 
+echo "platform-pkg-dev: using Node ${NODE_MAJOR}+ and ${PNPM} to install ${PKG_DEV}"
+
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "platform-pkg-dev: initialising git repository"
   git init
@@ -93,13 +95,14 @@ fi
 command -v pnpm >/dev/null 2>&1 || fail "pnpm is not available. Run 'corepack enable pnpm', then re-run."
 
 want=${PNPM#pnpm@}
-have=$(pnpm --version 2>/dev/null || echo unknown)
+have=$(COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm --version 2>/dev/null || echo unknown)
+
 if [ "$have" != "$want" ]; then
-  fail "pnpm ${want} is pinned but ${have} is running.
-  corepack prepare ${PNPM} --activate"
+  echo "platform-pkg-dev: pnpm ${want} is pinned but ${have} is running. corepack prepare ${PNPM} --activate"
+  COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare ${PNPM} --activate
 fi
 
-# When --assumerole is given, assume the GDS role and authorise CodeArtifact
+# When --role is given, assume the GDS role and authorise CodeArtifact
 # before writing any files.  platform-pkg-dev itself lives on CodeArtifact, so
 # nothing can proceed without a valid token.  The CLI is not installed yet, so
 # this calls gds-cli and the AWS CLI directly — the same commands the CLI wraps.
@@ -139,6 +142,7 @@ if [ -n "$ASSUME_ROLE" ]; then
     --domain-owner 904690835784 \
     --region eu-west-2 || fail "Could not authorise CodeArtifact."
 fi
+echo "3"
 
 # corepack reads packageManager from package.json, so the manifest has to exist
 # before pnpm is invoked - otherwise corepack picks its own default version and
@@ -168,7 +172,7 @@ pnpm install || fail "pnpm install failed.
 # fetches a different platform-pkg-dev than the one that just ran.
 echo "platform-pkg-dev: running dev init"
 INIT_ARGS="--pkg-dev $PKG_DEV"
-[ -n "$ASSUME_ROLE" ] && INIT_ARGS="$INIT_ARGS --assumerole $ASSUME_ROLE"
+[ -n "$ASSUME_ROLE" ] && INIT_ARGS="$INIT_ARGS --role $ASSUME_ROLE"
 pnpm dev init $INIT_ARGS "$@"
 
 # init rewrites package.json with the package's real dependency set - oxlint,

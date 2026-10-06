@@ -25,6 +25,7 @@ import { FORMAT_CONFIG_FILE } from '../lib/format.js';
 import { renderExampleFiles, renderManagedFiles, writeManagedFile } from '../lib/managed.js';
 import { gitRoot, packageDirWithinRepo } from '../lib/git.js';
 import { runHooks } from './hooks.js';
+import { runCdkInit } from './cdk.js';
 import { installDependencies } from '../lib/install.js';
 import { runTool } from '../lib/toolchain.js';
 import { renderWorkspaceFile, workspaceRootFor, WORKSPACE_FILE } from '../lib/workspace.js';
@@ -68,7 +69,7 @@ export async function runInit(argv: readonly string[]): Promise<void> {
       dir: { type: 'string' },
       name: { type: 'string' },
       team: { type: 'string' },
-      assumeRole: { type: 'string' },
+      role: { type: 'string' },
       'pkg-dev': { type: 'string' },
       cdk: { type: 'boolean' },
       'no-cdk': { type: 'boolean' },
@@ -140,7 +141,7 @@ export async function runInit(argv: readonly string[]): Promise<void> {
 type InitFlags = {
   name?: string | undefined;
   team?: string | undefined;
-  assumeRole?: string | undefined;
+  role?: string | undefined;
   cdk?: boolean | undefined;
   'no-cdk'?: boolean | undefined;
   package?: boolean | undefined;
@@ -169,11 +170,11 @@ async function collectAnswers(
 ): Promise<ScaffoldAnswers> {
   const defaultName = basename(targetDir);
 
-  const assumeRole =
-    flags.assumeRole ??
+  const role =
+    flags.role ??
     (acceptDefaults
-      ? fail('--assumerole is required when using --yes.')
-      : await ask('AWS role to assume', { flag: '--assumerole' }));
+      ? fail('--role is required when using --yes.')
+      : await ask('AWS role to assume', { flag: '--role' }));
 
   const packageName =
     flags.name ??
@@ -218,7 +219,7 @@ async function collectAnswers(
           flag: '--workspace',
         }));
 
-  return { packageName, team, assumeRole, cdk, isPackage, isWorkspace, isMember };
+  return { packageName, team, role, cdk, isPackage, isWorkspace, isMember };
 }
 
 /**
@@ -316,7 +317,7 @@ async function scaffold(
   const vars = {
     packageName: answers.packageName,
     team: answers.team,
-    assumeRole: answers.assumeRole,
+    role: answers.role,
     cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json' : '',
     codeArtifactAccount: String(CODE_ARTIFACT_ACCOUNT),
     // Carries its own surrounding blank lines so the README is valid markdown
@@ -405,9 +406,6 @@ async function scaffold(
     await writeGenerated(targetDir, join('packages', '.gitkeep'), '', options);
   }
 
-  // Answering yes to CDK adds the pinned dependencies (via buildPackageJson)
-  // and the cdk.out entries in .gitignore. It does not scaffold an app.
-
   const { written, skipped } = mergeReports(reports);
 
   for (const file of written.toSorted()) ok(file);
@@ -435,6 +433,11 @@ async function scaffold(
   if (options.install && !options.isMember && inRepo) {
     info('');
     await runHooks(['install'], { cwd: targetDir });
+  }
+
+  if (options.install && answers.cdk) {
+    info('');
+    await runCdkInit([], { cwd: targetDir });
   }
 
   info('');
