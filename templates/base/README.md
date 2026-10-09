@@ -8,16 +8,9 @@ package. `dev sync` keeps this package's pins matching it.
 
 ## Getting started
 
-You need two things installed on your machine before anything else:
+Install the Oxc VS Code extension — lint and format as you type, and on save:
 
 ```sh
-# 1. pre-commit - runs the git hook chain and installs every hook in it
-brew install pre-commit          # or: pipx install pre-commit
-dev doctor                      # confirms the exact version this repo pins
-```
-
-```sh
-# 2. the Oxc VS Code extension - lint and format as you type, and on save
 code --install-extension oxc.oxc-vscode
 ```
 
@@ -31,11 +24,12 @@ Then set the package up:
 ```sh
 nvm use
 pnpm install
-pnpm dev hooks install    # wires .githooks and pre-builds the hook environments
+pnpm dev hooks install    # installs pre-commit, wires .githooks and pre-builds the hook environments
 ```
 
 `hooks install` is per-clone: git does not carry `core.hooksPath` in a checkout,
-and the hook environments live in `~/.cache/pre-commit`.
+and the hook environments live in `~/.cache/pre-commit`. pre-commit itself is
+installed into `node_modules/.bin` automatically — no global install needed.
 
 **Inside a workspace, run `hooks install` at the repository root, not here.**
 Git resolves `core.hooksPath` once per repository, so a member package has no

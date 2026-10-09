@@ -111,7 +111,12 @@ if [ -n "$ASSUME_ROLE" ]; then
   command -v aws >/dev/null 2>&1 || fail "aws is not on PATH. Install the AWS CLI: https://aws.amazon.com/cli/"
 
   echo "platform-pkg-dev: assuming role $ASSUME_ROLE"
-  CREDS=$(gds-cli aws "$ASSUME_ROLE" -e) || fail "Could not assume role $ASSUME_ROLE. Are you on the VPN?"
+  GDS_ERR=$(mktemp)
+  CREDS=$(gds-cli aws "$ASSUME_ROLE" -e 2>"$GDS_ERR") || {
+    cat "$GDS_ERR" >&2
+    fail "Could not assume role $ASSUME_ROLE.
+  $(cat "$GDS_ERR")"
+  }
 
   # Parse credentials safely — no eval.
   # Strip optional `export ` prefix, split on first `=`, then strip surrounding

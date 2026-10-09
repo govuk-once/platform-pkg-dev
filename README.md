@@ -77,10 +77,10 @@ package will be published — then writes:
 | `cdk.json`, `src/infra/`                 | CDK packages only                                                           |
 
 Nothing is written until the environment check passes. `init` verifies `git`
-and `pnpm` are present, and that `pre-commit` is installed at **exactly** the
-version pinned in `versions.json`. A failed check leaves the target directory
-untouched rather than half-scaffolded. semgrep, checkov and detect-secrets are
-not checked - pre-commit installs those itself.
+and `pnpm` are present. A failed check leaves the target directory untouched
+rather than half-scaffolded. pre-commit is installed automatically into
+`node_modules/.bin` by `dev hooks install` — no global install needed. semgrep,
+checkov and detect-secrets are not checked — pre-commit installs those itself.
 
 ## How a package tracks platform-pkg-dev
 
@@ -330,8 +330,8 @@ sync by construction.
 Hooks are run by [pre-commit](https://pre-commit.com), which installs each hook
 repo into its own isolated environment at a pinned revision. That is the whole
 reason for using it: **semgrep, checkov and detect-secrets are never installed
-globally and cannot drift** — `pre-commit` is the single tool a developer
-installs by hand.
+globally and cannot drift**. pre-commit itself is installed automatically into
+`node_modules/.bin` by `dev hooks install` — no external install needed.
 
 The hook scripts themselves are committed in `.githooks/` rather than generated
 into `.git/hooks`, so they stay reviewable. They hand straight off to
