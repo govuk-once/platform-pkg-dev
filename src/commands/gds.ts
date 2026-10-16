@@ -2,23 +2,25 @@ import { parseArgs } from 'node:util';
 import { assumeRole, authoriseCodeArtifact, verifyCredentials } from '../lib/gds.js';
 import { bold, info, ok, step } from '../lib/log.js';
 import { CODE_ARTIFACT_ACCOUNT } from '../versions.js';
+import { readAwsConfig, resolveRole } from './synth.js';
 import type { RunContext } from './run.js';
 
 export const ASSUME_ROLE_USAGE = `${bold('dev assumeRole')} - assume a GDS role and print credentials
 
 Usage
-  dev assumeRole <role> [options]
+  dev assumeRole [role] [options]
 
 Options
+  --env <name>  Which configured role to use (when more than one exists)
   --verify      Confirm the credentials work (calls sts:GetCallerIdentity)
   --export      Print credentials as export statements for eval
   --cwd <path>  Run against this package instead of the current directory
   --help        Show this message
 
-Assumes the named GDS role via gds-cli and prints the credentials. With
---export the output is suitable for eval:
+When no role is given, uses the role from once.aws.roles in package.json.
+With --export the output is suitable for eval:
 
-  eval "$(dev assumeRole connect-development-admin --export)"
+  eval "$(dev assumeRole --export)"
 
 Credentials are never written to disk and never placed in a process argument.
 `;
@@ -26,25 +28,24 @@ Credentials are never written to disk and never placed in a process argument.
 export const CODE_ARTIFACT_USAGE = `${bold('dev codeArtifactAuthorise')} - authorise npm against CodeArtifact
 
 Usage
-  dev codeArtifactAuthorise --role <role> [options]
+  dev codeArtifactAuthorise [role] [options]
 
 Options
-  --role <name>  The GDS role to assume before authorising (required)
-  --cwd <path>   Run against this package instead of the current directory
-  --help         Show this message
+  --env <name>  Which configured role to use (when more than one exists)
+  --cwd <path>  Run against this package instead of the current directory
+  --help        Show this message
 
-Assumes the named role, then runs \`aws codeartifact login\` to mint a
-short-lived token and write it into the global .npmrc. After this, pnpm and
-npm can pull packages from the private CodeArtifact registry.
+When no role is given, uses the role from once.aws.roles in package.json.
+
+Assumes the role, then runs \`aws codeartifact login\` to mint a short-lived
+token and write it into the global .npmrc.
 `;
 
-export async function runAssumeRole(
-  argv: readonly string[],
-  _context: RunContext,
-): Promise<number> {
+export async function runAssumeRole(argv: readonly string[], context: RunContext): Promise<number> {
   const { values, positionals } = parseArgs({
     args: [...argv],
     options: {
+      env: { type: 'string' },
       verify: { type: 'boolean' },
       export: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
@@ -57,11 +58,7 @@ export async function runAssumeRole(
     return 0;
   }
 
-  const [role] = positionals;
-  if (role === undefined) {
-    info(ASSUME_ROLE_USAGE);
-    return 1;
-  }
+  const role = positionals[0] ?? resolveRole(readAwsConfig(context.cwd), { env: values.env });
 
   step(`Assuming ${role}`);
   const credentials = assumeRole(role);
@@ -83,15 +80,15 @@ export async function runAssumeRole(
 
 export async function runCodeArtifactAuthorise(
   argv: readonly string[],
-  _context: RunContext,
+  context: RunContext,
 ): Promise<number> {
-  const { values } = parseArgs({
+  const { values, positionals } = parseArgs({
     args: [...argv],
     options: {
-      role: { type: 'string' },
+      env: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
-    allowPositionals: false,
+    allowPositionals: true,
   });
 
   if (values.help === true) {
@@ -99,15 +96,12 @@ export async function runCodeArtifactAuthorise(
     return 0;
   }
 
-  if (values.role === undefined) {
-    info(CODE_ARTIFACT_USAGE);
-    return 1;
-  }
+  const role = positionals[0] ?? resolveRole(readAwsConfig(context.cwd), { env: values.env });
 
-  step(`Assuming ${values.role}`);
-  const credentials = assumeRole(values.role);
+  step(`Assuming ${role}`);
+  const credentials = assumeRole(role);
   verifyCredentials(credentials);
-  ok(`Assumed ${values.role}`);
+  ok(`Assumed ${role}`);
 
   step('Authorising CodeArtifact');
   authoriseCodeArtifact(CODE_ARTIFACT_ACCOUNT, credentials);

@@ -3,11 +3,13 @@ import {
   accessSync,
   chmodSync,
   constants,
+  cpSync,
   mkdirSync,
   statSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { toolVersion } from '../versions.js';
 import { which } from './which.js';
@@ -16,6 +18,10 @@ import { ok, step, error, dim } from './log.js';
 const PIP_DIR = 'node_modules/.pip/pre-commit';
 const PIP_BIN = join(PIP_DIR, 'bin', 'pre-commit');
 const NODE_BIN = join('node_modules', '.bin', 'pre-commit');
+
+function cacheDir(version: string): string {
+  return join(homedir(), '.gds-dev', 'cache', 'pre-commit', version);
+}
 
 function allPythons(): string[] {
   const seen = new Set<string>();
@@ -58,6 +64,50 @@ export function resolvePreCommit(cwd: string): string | undefined {
   return which('pre-commit');
 }
 
+function writeWrapper(link: string): void {
+  try {
+    unlinkSync(link);
+  } catch {
+    // Not there yet — fine.
+  }
+  mkdirSync(join(link, '..'), { recursive: true });
+
+  const wrapper = [
+    '#!/bin/sh',
+    'DIR="$(cd "$(dirname "$0")/.." && pwd)"',
+    `PYTHONPATH="$DIR/.pip/pre-commit" exec "$DIR/.pip/pre-commit/bin/pre-commit" "$@"`,
+    '',
+  ].join('\n');
+  writeFileSync(link, wrapper, 'utf8');
+  chmodSync(link, 0o755);
+}
+
+function restoreFromCache(version: string, cwd: string): boolean {
+  const cached = cacheDir(version);
+  const cachedBin = join(cached, 'bin', 'pre-commit');
+  if (!isExecutable(cachedBin)) return false;
+
+  const target = join(cwd, PIP_DIR);
+  try {
+    mkdirSync(target, { recursive: true });
+    cpSync(cached, target, { recursive: true });
+    return isExecutable(join(cwd, PIP_BIN));
+  } catch {
+    return false;
+  }
+}
+
+function saveToCache(version: string, cwd: string): void {
+  const source = join(cwd, PIP_DIR);
+  const cached = cacheDir(version);
+  try {
+    mkdirSync(cached, { recursive: true });
+    cpSync(source, cached, { recursive: true });
+  } catch {
+    // Cache write is best-effort — don't block the install.
+  }
+}
+
 export function installPreCommit(cwd: string): string | undefined {
   const version = toolVersion('pre-commit');
   const link = join(cwd, NODE_BIN);
@@ -68,7 +118,11 @@ export function installPreCommit(cwd: string): string | undefined {
     if (output.includes(version)) return link;
   }
 
-  const target = join(cwd, PIP_DIR);
+  if (restoreFromCache(version, cwd)) {
+    writeWrapper(link);
+    ok(`pre-commit ${version} (cached) -> node_modules/.bin/pre-commit`);
+    return link;
+  }
 
   const pythons = allPythons();
   if (pythons.length === 0) {
@@ -80,6 +134,7 @@ export function installPreCommit(cwd: string): string | undefined {
   }
 
   step(`Installing pre-commit ${version}`);
+  const target = join(cwd, PIP_DIR);
   let installed = false;
   for (const python of pythons) {
     const result = spawnSync(
@@ -113,21 +168,8 @@ export function installPreCommit(cwd: string): string | undefined {
     return undefined;
   }
 
-  try {
-    unlinkSync(link);
-  } catch {
-    // Not there yet — fine.
-  }
-  mkdirSync(join(cwd, 'node_modules', '.bin'), { recursive: true });
-
-  const wrapper = [
-    '#!/bin/sh',
-    'DIR="$(cd "$(dirname "$0")/.." && pwd)"',
-    `PYTHONPATH="$DIR/.pip/pre-commit" exec "$DIR/.pip/pre-commit/bin/pre-commit" "$@"`,
-    '',
-  ].join('\n');
-  writeFileSync(link, wrapper, 'utf8');
-  chmodSync(link, 0o755);
+  saveToCache(version, cwd);
+  writeWrapper(link);
 
   ok(`pre-commit ${version} -> node_modules/.bin/pre-commit`);
   return link;
