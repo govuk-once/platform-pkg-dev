@@ -14,6 +14,10 @@ platform-pkg-dev solves this by centralising every version pin in one place (`ve
 
 - **Zero-config scaffolding.** `start.sh` bootstraps a new package from scratch. `dev init` writes the full config set. A new developer runs two commands and has a working, secured, linted package.
 - **Consistent toolchain.** TypeScript, Vitest, oxlint, oxfmt and CDK versions are pinned centrally. Upgrading one package upgrades all of them.
+- **Central place to test tooling.** platform-pkg-dev's own test suite verifies that version pins resolve, configs render correctly, hooks wire up, and templates produce valid output. Tooling changes are tested once here before they reach any consumer package — not discovered downstream.
+- **Pinned versions, not ranges.** Every dependency is pinned to an exact version, not a semver range. `dev sync --check` enforces this on every commit. When a version moves, it moves everywhere at once via `versions.json` — there is no window where two packages run different versions of the same tool.
+- **Upgrade once, propagate everywhere.** Bumping a version in `versions.json` and running `dev sync` across packages is the entire upgrade path. No per-package PRs, no forgetting one, no drift.
+- **Preflight checks.** `dev init` and `dev doctor` verify the environment before anything runs — Node version, pnpm version, git signing, tool versions. A developer finds out what's missing immediately, not after a failed commit or a broken build.
 - **Automated git hooks.** pre-commit is installed locally into `node_modules/.bin` — no global install needed. Hook environments for semgrep, checkov and detect-secrets are managed automatically.
 - **CDK scaffolding.** `dev cdk:init` generates a CDK app with the correct feature flags for the pinned CDK version, and `dev synth`/`dev scan` handle role assumption and scanning.
 
