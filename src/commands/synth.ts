@@ -27,7 +27,7 @@ Roles are declared in package.json, so the name is not repeated in a script:
     "team": "platform",
     "aws": {
       "region": "eu-west-2",
-      "roles": { "dev": "once-udp-development-admin" }
+      "roles": { "dev": "connect-development-admin" }
     }
   }
 

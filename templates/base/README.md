@@ -8,16 +8,9 @@ package. `dev sync` keeps this package's pins matching it.
 
 ## Getting started
 
-You need two things installed on your machine before anything else:
+Install the Oxc VS Code extension — lint and format as you type, and on save:
 
 ```sh
-# 1. pre-commit - runs the git hook chain and installs every hook in it
-brew install pre-commit          # or: pipx install pre-commit
-dev doctor                      # confirms the exact version this repo pins
-```
-
-```sh
-# 2. the Oxc VS Code extension - lint and format as you type, and on save
 code --install-extension oxc.oxc-vscode
 ```
 
@@ -31,11 +24,12 @@ Then set the package up:
 ```sh
 nvm use
 pnpm install
-pnpm dev hooks install    # wires .githooks and pre-builds the hook environments
+pnpm dev hooks install    # installs pre-commit, wires .githooks and pre-builds the hook environments
 ```
 
 `hooks install` is per-clone: git does not carry `core.hooksPath` in a checkout,
-and the hook environments live in `~/.cache/pre-commit`.
+and the hook environments live in `~/.cache/pre-commit`. pre-commit itself is
+installed into `node_modules/.bin` automatically — no global install needed.
 
 **Inside a workspace, run `hooks install` at the repository root, not here.**
 Git resolves `core.hooksPath` once per repository, so a member package has no
@@ -47,21 +41,21 @@ fetches each at a pinned revision into its own isolated environment.
 
 ## Commands
 
-| Command                                     | What it does                                  |
-| ------------------------------------------- | --------------------------------------------- |
-| `pnpm dev build`                            | Compile with the pinned TypeScript            |
-| `pnpm dev test`                             | Run Vitest once                               |
-| `pnpm dev test:watch`                       | Re-run affected tests as you save             |
-| `pnpm dev lint`                             | Run oxlint (type-aware) with the shared rules |
-| `pnpm dev format`                           | Run oxfmt (`--check` to verify only)          |
-| `pnpm dev typecheck`                        | Type-check without emitting                   |
-| `pnpm dev sync`                             | Re-pin managed deps, then `pnpm install`      |
-| `pnpm dev doctor`                           | Check the pinned tool versions are installed  |
-| `pnpm dev pre-commit`                       | Run the commit-stage hooks now                |
-| `pnpm dev pre-push`                         | Run the push-stage hooks now                  |
-| `pnpm dev assumeRole <role>`                | Assume a GDS role and print credentials       |
-| `pnpm dev codeArtifactAuthorise --role <r>` | Assume role and authorise CodeArtifact        |
-| {{cdkSection}}                              |
+| Command                                 | What it does                                  |
+| --------------------------------------- | --------------------------------------------- |
+| `pnpm dev build`                        | Compile with the pinned TypeScript            |
+| `pnpm dev test`                         | Run Vitest once                               |
+| `pnpm dev test:watch`                   | Re-run affected tests as you save             |
+| `pnpm dev lint`                         | Run oxlint (type-aware) with the shared rules |
+| `pnpm dev format`                       | Run oxfmt (`--check` to verify only)          |
+| `pnpm dev typecheck`                    | Type-check without emitting                   |
+| `pnpm dev sync`                         | Re-pin managed deps, then `pnpm install`      |
+| `pnpm dev doctor`                       | Check the pinned tool versions are installed  |
+| `pnpm dev pre-commit`                   | Run the commit-stage hooks now                |
+| `pnpm dev pre-push`                     | Run the push-stage hooks now                  |
+| `pnpm dev assumeRole [role]`            | Assume a GDS role (defaults to package.json)  |
+| `pnpm dev codeArtifactAuthorise [role]` | Assume role and authorise CodeArtifact        |
+| {{cdkSection}}                          |
 
 ## Git hooks
 

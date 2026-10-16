@@ -1,6 +1,6 @@
 {
   "name": "@govuk-connect/dev",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
   "bin": {
@@ -43,24 +43,25 @@
     "lint": "oxlint --type-aware",
     "format": "oxfmt",
     "pre-commit": "pnpm build && DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-commit",
-    "pre-push": "pre-commit run --hook-stage pre-push --all-files",
+    "pre-push": "PRE_COMMIT=\"./node_modules/.bin/pre-commit\"; [ -x \"$PRE_COMMIT\" ] || PRE_COMMIT=pre-commit; \"$PRE_COMMIT\" run --hook-stage pre-push --all-files",
     "prepare": "pnpm run build && ./hooks/setup-git-config && node dist/cli.js hooks install 2>/dev/null || true",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "pretest": "pnpm build"
   },
   "dependencies": {
     "aws-cdk-lib": "2.265.0",
     "constructs": "10.8.1",
     "cspell": "10.3.0",
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
     "typescript": "7.0.2",
+    "vitest": "4.1.10",
     "yaml": "2.9.0"
   },
   "devDependencies": {
     "@types/node": "24.13.3",
     "aws-cdk": "2.1136.0",
-    "oxfmt": "0.63.0",
-    "oxlint": "1.78.0",
-    "oxlint-tsgolint": "7.0.2001",
-    "vitest": "4.1.10"
+    "oxlint-tsgolint": "7.0.2001"
   },
   "engines": {
     "node": ">=24"

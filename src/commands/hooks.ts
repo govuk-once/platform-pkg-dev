@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { bold, dim, error, fail, info, ok, step } from '../lib/log.js';
 import { CONFIG_FILE } from '../lib/pre-commit.js';
+import { resolvePreCommit, installPreCommit } from '../lib/pre-commit-bin.js';
 import { which } from '../lib/which.js';
 import { packageDirWithinRepo } from '../lib/git.js';
 import type { RunContext } from './run.js';
@@ -119,8 +120,9 @@ function install(cwd: string): number {
  * multi-minute pause at exactly the wrong moment.
  */
 function installHookEnvironments(cwd: string): number {
-  if (which('pre-commit') === undefined) {
-    error('pre-commit is not on PATH, so the hook environments were not built.');
+  let bin = installPreCommit(cwd) ?? resolvePreCommit(cwd);
+  if (bin === undefined) {
+    error('pre-commit could not be installed or found.');
     process.stderr.write(`  ${dim('dev doctor')}\n`);
     return 1;
   }
@@ -131,7 +133,7 @@ function installHookEnvironments(cwd: string): number {
   }
 
   step('Building hook environments (first run downloads them)');
-  const result = spawnSync('pre-commit', ['install-hooks'], { stdio: 'inherit', cwd });
+  const result = spawnSync(bin, ['install-hooks'], { stdio: 'inherit', cwd });
 
   if (result.error !== undefined) {
     error(`Failed to run pre-commit: ${result.error.message}`);
