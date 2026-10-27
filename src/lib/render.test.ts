@@ -67,7 +67,56 @@ describe('renderTemplateDir', () => {
     const report = await renderTemplateDir('base', dir, VARS, { force: false });
 
     expect(report.written).toContain(join('src', 'index.ts'));
-    expect(await readFile(join(dir, 'src', 'index.ts'), 'utf8')).toContain("'connect-org'");
+    expect(await readFile(join(dir, 'src', 'index.ts'), 'utf8'))
+      .toEqual(`import type { SessionToken } from './types.js';
+
+/**
+ * Generates a mock session token for a given user.
+ */
+export function generateToken(userId: string, expiresInMs: number = 3600000): SessionToken {
+  if (!userId || userId.trim() === '') {
+    throw new Error('Invalid User ID provided for token generation.');
+  }
+
+  // Simulate a unique token string (e.g., base64 or hex in a real app)
+  const randomStr = Math.random().toString(36).substring(2, 10);
+
+  return {
+    token: \`tok_\${userId}_\${randomStr}\`,
+    expiresAt: Date.now() + expiresInMs,
+    isValid: true,
+  };
+}
+
+/**
+ * Validates a session token against current system time and its internal flag.
+ */
+export function validateToken(session: SessionToken): boolean {
+  if (!session || !session.token) {
+    return false;
+  }
+
+  if (Date.now() > session.expiresAt) {
+    return false;
+  }
+
+  return session.isValid;
+}
+`);
+  });
+
+  it('renders the seed test file', async () => {
+    const dir = await scratch();
+    const report = await renderTemplateDir('base', dir, VARS, { force: false });
+
+    expect(report.written).toContain(join('src', 'index.test.ts'));
+
+    const content = await readFile(join(dir, 'src', 'index.test.ts'), 'utf8');
+    expect(content).toContain(
+      "import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'",
+    );
+    expect(content).toContain("import { generateToken, validateToken } from './index.js'");
+    expect(content).toContain("describe('Identity Session API'");
   });
 
   it('ships its templates next to dist', () => {
@@ -109,5 +158,44 @@ describe('renderTemplateDir with force', () => {
     await renderTemplateDir('base', dir, VARS, { force: true });
 
     expect(await readFile(join(dir, 'tsconfig.json'), 'utf8')).toContain('platform-pkg-dev');
+  });
+});
+
+describe('renderTemplateDir detached', () => {
+  it('renders standalone tsconfig with no extends', async () => {
+    const dir = await scratch();
+    const report = await renderTemplateDir('detached', dir, VARS, { force: false });
+
+    expect(report.written).toContain('tsconfig.json');
+    const tsconfig = await readFile(join(dir, 'tsconfig.json'), 'utf8');
+    expect(tsconfig).not.toContain('extends');
+    expect(tsconfig).toContain('"strict": true');
+  });
+
+  it('renders standalone oxlintrc with no extends', async () => {
+    const dir = await scratch();
+    await renderTemplateDir('detached', dir, VARS, { force: false });
+
+    const oxlintrc = await readFile(join(dir, '.oxlintrc.json'), 'utf8');
+    expect(oxlintrc).not.toContain('extends');
+    expect(oxlintrc).toContain('"eqeqeq"');
+  });
+
+  it('renders standalone vitest config with no platform-pkg-dev import', async () => {
+    const dir = await scratch();
+    await renderTemplateDir('detached', dir, VARS, { force: false });
+
+    const vitest = await readFile(join(dir, 'vitest.config.ts'), 'utf8');
+    expect(vitest).not.toContain('platform-pkg-dev');
+    expect(vitest).toContain('vitest/config');
+  });
+
+  it('renders standalone githook shims with no platform-pkg-dev reference', async () => {
+    const dir = await scratch();
+    await renderTemplateDir('detached', dir, VARS, { force: false });
+
+    const hook = await readFile(join(dir, '.githooks', 'pre-commit'), 'utf8');
+    expect(hook).not.toContain('platform-pkg-dev');
+    expect(hook).toContain('pre-commit');
   });
 });

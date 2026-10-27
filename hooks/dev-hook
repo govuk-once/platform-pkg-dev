@@ -28,10 +28,15 @@ if [ "$(git config --get commit.gpgsign)" != "true" ]; then
   exit 1
 fi
 
-if ! command -v pre-commit >/dev/null 2>&1; then
-  echo "platform-pkg-dev: pre-commit is not installed - the $HOOK hook cannot run." >&2
-  echo "platform-pkg-dev: run 'pnpm dev doctor' to see the pinned version to install." >&2
-  exit 1
+PRE_COMMIT="$DEV_PACKAGE_DIR/node_modules/.bin/pre-commit"
+if [ ! -x "$PRE_COMMIT" ]; then
+  if command -v pre-commit >/dev/null 2>&1; then
+    PRE_COMMIT="pre-commit"
+  else
+    echo "platform-pkg-dev: pre-commit is not installed - the $HOOK hook cannot run." >&2
+    echo "platform-pkg-dev: run 'pnpm dev hooks install' to set it up." >&2
+    exit 1
+  fi
 fi
 
 # Checked before handing off, not as a hook inside the chain: pre-commit reads
@@ -72,7 +77,7 @@ fi
 # ones. Absent means nothing to do.
 EXTEND="${DEV_HOOK_DIR:-.githooks}/$HOOK.extend.sh"
 
-if ! pre-commit hook-impl \
+if ! "$PRE_COMMIT" hook-impl \
   --config=.pre-commit-config.yaml \
   --hook-type="$HOOK" \
   --hook-dir "${DEV_HOOK_DIR:-.githooks}" \

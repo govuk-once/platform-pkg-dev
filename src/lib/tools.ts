@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { TOOL_NAMES, toolVersion } from '../versions.js';
+import { resolvePreCommit } from './pre-commit-bin.js';
 import { which } from './which.js';
 
 export interface ToolSpec {
@@ -17,7 +18,8 @@ const WHY: Readonly<Record<string, string>> = {
 };
 
 const INSTALL: Readonly<Record<string, (version: string) => string>> = {
-  'pre-commit': (v) => `pipx install pre-commit==${v}   (or: brew install pre-commit)`,
+  'pre-commit': (v) =>
+    `dev hooks install   (or: python3 -m pip install --target=node_modules/.pip/pre-commit pre-commit==${v})`,
 };
 
 /** Every external executable platform-pkg-dev pins, built from versions.json. */
@@ -51,8 +53,10 @@ export type ToolStatus =
   | { readonly state: 'mismatch'; readonly spec: ToolSpec; readonly found: string };
 
 /** Runs `<bin> --version` and compares against the pin. */
-export function inspectTool(spec: ToolSpec): ToolStatus {
-  const path = which(spec.bin);
+export function inspectTool(spec: ToolSpec, cwd?: string): ToolStatus {
+  const path =
+    (spec.bin === 'pre-commit' && cwd !== undefined ? resolvePreCommit(cwd) : undefined) ??
+    which(spec.bin);
   if (path === undefined) return { state: 'missing', spec };
 
   const result = spawnSync(path, ['--version'], { encoding: 'utf8' });
@@ -66,5 +70,5 @@ export function inspectTool(spec: ToolSpec): ToolStatus {
 }
 
 export function inspectTools(specs: readonly ToolSpec[] = toolSpecs()): readonly ToolStatus[] {
-  return specs.map(inspectTool);
+  return specs.map((spec) => inspectTool(spec));
 }

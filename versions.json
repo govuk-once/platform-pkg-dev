@@ -16,9 +16,10 @@
     "constructs": "10.8.1",
     "aws-cdk": "2.1136.0"
   },
-  "$toolsComment": "The only external executable a developer installs. pre-commit then installs every hook below into its own isolated environment at the pinned rev, so semgrep, checkov and detect-secrets never need to be on PATH.",
+  "$toolsComment": "Python tools installed locally into node_modules/.pip by `dev hooks install`. pre-commit installs every hook below into its own isolated environment at the pinned rev, so semgrep, checkov and detect-secrets never need to be on PATH.",
   "tools": {
-    "pre-commit": "4.6.2"
+    "pre-commit": "4.6.2",
+    "aws-sam-cli": "1.155.2"
   },
   "$hookRevsComment": "Hook repo revisions for .pre-commit-config.yaml. The rev is the version. Do not run `pre-commit autoupdate` - bump here and run `dev sync`.",
   "hookRevs": {

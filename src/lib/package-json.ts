@@ -13,6 +13,8 @@ export interface ScaffoldAnswers {
   readonly isWorkspace: boolean;
   /** Member of a workspace: inherits the root's tooling rather than its own. */
   readonly isMember?: boolean;
+  /** GDS role name for assuming AWS credentials and authorising CodeArtifact. */
+  readonly role: string;
 }
 
 /** npm's own name rules, narrowed - no scopes, no uppercase, no leading punctuation. */
@@ -83,7 +85,76 @@ export function buildPackageJson(answers: ScaffoldAnswers, pkgDevSpec: string): 
     publishConfig: {
       registry: MANAGED_FIELDS.publishConfig.registry,
     },
-    once: { team: answers.team },
+    once: {
+      team: answers.team,
+      aws: { region: 'eu-west-2', roles: { dev: answers.role } },
+    },
+  };
+
+  return `${JSON.stringify(manifest, null, 2)}\n`;
+}
+
+export function buildDetachedPackageJson(answers: ScaffoldAnswers): string {
+  const dependencies: Record<string, string> = {};
+  const devDependencies: Record<string, string> = {};
+
+  for (const pin of MANAGED_PINS) {
+    if (pin.group === 'cdk' && !answers.cdk) continue;
+    const section = pin.section === 'dependencies' ? dependencies : devDependencies;
+    section[pin.name] = pin.spec;
+  }
+
+  const publishFields = answers.isPackage
+    ? {
+        main: './dist/cjs/index.js',
+        module: './dist/esm/index.js',
+        types: './dist/esm/index.d.ts',
+        exports: {
+          '.': {
+            types: './dist/esm/index.d.ts',
+            import: './dist/esm/index.js',
+            require: './dist/cjs/index.js',
+          },
+          './package.json': './package.json',
+        },
+      }
+    : {};
+
+  const manifest = {
+    name: answers.packageName,
+    version: '0.0.0',
+    ...(answers.isPackage ? { private: false } : { private: true }),
+    type: 'module',
+    sideEffects: false,
+    ...publishFields,
+    files: ['dist'],
+    scripts: {
+      build: 'tsc',
+      test: 'vitest run',
+      'test:watch': 'vitest',
+      lint: 'oxlint --type-aware',
+      format: 'oxfmt',
+      typecheck: 'tsc --noEmit',
+      ...(answers.cdk
+        ? {
+            synth: 'cd cdk && cdk synth',
+            'synth:diff': 'cd cdk && cdk diff',
+            deploy: 'cd cdk && cdk deploy',
+            scan: 'cd cdk && cdk synth && checkov -d cdk.out --quiet --compact',
+          }
+        : {}),
+    },
+    engines: { node: MANAGED_FIELDS.enginesNode },
+    packageManager: MANAGED_FIELDS.packageManager,
+    ...(Object.keys(dependencies).length > 0 ? { dependencies: sortKeys(dependencies) } : {}),
+    devDependencies: sortKeys(devDependencies),
+    publishConfig: {
+      registry: MANAGED_FIELDS.publishConfig.registry,
+    },
+    once: {
+      team: answers.team,
+      aws: { region: 'eu-west-2', roles: { dev: answers.role } },
+    },
   };
 
   return `${JSON.stringify(manifest, null, 2)}\n`;
