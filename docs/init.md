@@ -26,6 +26,35 @@ Existing files are not overwritten unless `--force` is passed. See `dev init --h
 - **Formats what it wrote.** oxfmt has its own key order for `package.json`, and without this a fresh package would fail `dev format --check` immediately.
 - **Runs `pnpm install`.** Until it has, there is no `dev` binary. `--no-install` skips it.
 
+## `dev init --detach`
+
+Scaffolds a fully standalone package with no ongoing dependency on platform-pkg-dev.
+
+```sh
+pnpm dev init --detach --name connect-standalone --team identity --role connect-dev-admin
+```
+
+What changes compared to a normal init:
+
+| Aspect                        | Normal                                         | Detached                                         |
+| ----------------------------- | ---------------------------------------------- | ------------------------------------------------ |
+| `platform-pkg-dev` dependency | devDependency                                  | Not present                                      |
+| `tsconfig.json`               | Extends `platform-pkg-dev/tsconfig.base.json`  | Full config inlined                              |
+| `.oxlintrc.json`              | Extends `platform-pkg-dev/oxlint.base.json`    | Full rules inlined                               |
+| `vitest.config.ts`            | Imports from `platform-pkg-dev/vitest`         | Self-contained config                            |
+| `.githooks/`                  | Delegates to `platform-pkg-dev/hooks/dev-hook` | Runs pre-commit directly                         |
+| `.pre-commit-config.yaml`     | Local hooks use `dev` CLI wrappers             | Local hooks use tools directly                   |
+| `dev sync`                    | Enforces pins on every commit                  | Not present                                      |
+| `package.json` scripts        | None (uses `dev` CLI)                          | Direct tool commands (`tsc`, `vitest run`, etc.) |
+
+The package owns all configuration from day one and can edit any file freely.
+
+Also works with `start.sh`:
+
+```sh
+bash platform-pkg-dev/start.sh --local --detach --dir connect-standalone --name connect-standalone --team identity --role connect-dev-admin
+```
+
 ### The bootstrap manifest
 
 The throwaway `package.json` that `start.sh` writes carries `once.bootstrap: true`. This is the only reason `init` replaces it — any other existing `package.json` is left alone.

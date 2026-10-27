@@ -46,7 +46,12 @@
     "pre-push": "PRE_COMMIT=\"./node_modules/.bin/pre-commit\"; [ -x \"$PRE_COMMIT\" ] || PRE_COMMIT=pre-commit; \"$PRE_COMMIT\" run --hook-stage pre-push --all-files",
     "prepare": "pnpm run build && ./hooks/setup-git-config && node dist/cli.js hooks install 2>/dev/null || true",
     "prepublishOnly": "pnpm run build",
-    "pretest": "pnpm build"
+    "pretest": "pnpm build",
+    "sam:synth": "rm -rf sam/.aws-sam && SAM_LOCAL=true cdk synth -a 'node sam/example/app.ts' -o sam/.aws-sam",
+    "sam:up": "pnpm sam:down; docker compose -f sam/docker-compose.yml up -d && node sam/init-local-resources.ts",
+    "sam:down": "docker compose -f sam/docker-compose.yml down",
+    "sam:start": "pnpm sam:synth && pnpm sam:up && DOCKER_HOST=unix://$HOME/.docker/run/docker.sock sam local start-api -t sam/.aws-sam/SAMExampleStack.template.json --docker-network sam-local --region eu-west-2",
+    "sam:clean": "docker ps -a --format '{{.ID}} {{.Image}}' | grep 'public.ecr.aws/lambda' | awk '{print $1}' | xargs -r docker rm -f"
   },
   "dependencies": {
     "aws-cdk-lib": "2.265.0",
@@ -59,8 +64,12 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1156.0",
+    "@aws-sdk/lib-dynamodb": "^3.1156.0",
+    "@esbuild/linux-x64": "^0.28.2",
     "@types/node": "24.13.3",
     "aws-cdk": "2.1136.0",
+    "esbuild": "^0.28.2",
     "oxlint-tsgolint": "7.0.2001"
   },
   "engines": {

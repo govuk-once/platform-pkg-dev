@@ -1,10 +1,57 @@
 # Roadmap
 
-## `dev init --detach`
+## ~~`dev init --detach`~~ Done
 
-Scaffold a fully standalone package with no ongoing sync to platform-pkg-dev. All templates, configs and hook scripts are rendered inline — no `extends` back to platform-pkg-dev's base configs, no `dev sync`, no dependency on platform-pkg-dev after init completes.
+Scaffold a fully standalone package with no ongoing dependency on platform-pkg-dev. During `start.sh` or `dev init`, `--detach`:
 
-Use case: packages that need the initial scaffolding but will diverge intentionally (e.g. external contributions, packages moving out of the Connect org).
+- Inline all config rather than using `extends` (tsconfig, oxlint rules written directly, not pointing at platform-pkg-dev's base files).
+- Write hook scripts that run tools directly, not through `dev sync` or the `dev` CLI.
+- Not add platform-pkg-dev as a dependency — the package owns everything from day one.
+- pre-commit config is rendered as a static file with no `dev sync` regeneration.
+
+Use case: packages that need the initial scaffolding but will diverge intentionally (e.g. external contributions, packages moving out of the Connect org, teams that want the starting point but not the ongoing coupling).
+
+## Per-file overrides in `package.json`
+
+Allow packages to opt specific managed files out of `dev sync` drift detection, so they can be edited in place without sync reverting them:
+
+```jsonc
+{
+  "once": {
+    "override": {
+      "preCommitConfig": true,
+      "preCommit": true,
+      "prePush": true,
+    },
+  },
+}
+```
+
+When a file is marked as overridden:
+
+- `dev sync` skips it — no drift check, no regeneration.
+- The package owns that file and can edit it freely.
+- Other managed files continue to sync normally.
+
+Use case: packages with bespoke hook chains, custom pre-commit configs, or security requirements that differ from the standard set.
+
+## `DevTagAspect` — CDK resource tagging
+
+Expose a CDK Aspect from platform-pkg-dev that automatically tags all resources with tooling metadata:
+
+```ts
+import { DevTagAspect } from 'platform-pkg-dev';
+
+Aspects.of(app).add(new DevTagAspect());
+```
+
+Tags applied:
+
+- `gds-dev:version` — the platform-pkg-dev version that built this stack.
+- `gds-dev:team` — from `once.team` in `package.json`.
+- `gds-dev:package` — the package name.
+
+Also add the platform-pkg-dev version as a tag on every Stack by default in the CDK template's `bin/app.ts`, so deployed infrastructure is traceable back to the tooling version that produced it.
 
 ## Package-level `dev` config in `package.json`
 

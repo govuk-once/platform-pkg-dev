@@ -43,6 +43,7 @@ bash platform-pkg-dev/start.sh --local \
 | Command                                 | Description                                                               |
 | --------------------------------------- | ------------------------------------------------------------------------- |
 | `pnpm dev init`                         | Scaffold a new package                                                    |
+| `pnpm dev init --detach`                | Scaffold a standalone package with no platform-pkg-dev dependency         |
 | `pnpm dev sync`                         | Re-pin managed deps, then `pnpm install`                                  |
 | `pnpm dev build`                        | Compile with the pinned TypeScript                                        |
 | `pnpm dev test`                         | Run Vitest once                                                           |

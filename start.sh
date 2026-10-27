@@ -41,6 +41,7 @@ fi
 # The marker keeps quoting intact while rebuilding "$@" in POSIX sh.
 DIR=""
 ASSUME_ROLE=""
+DETACH=""
 set -- "$@" "--end-of-args--"
 while [ "$1" != "--end-of-args--" ]; do
   case "$1" in
@@ -48,6 +49,7 @@ while [ "$1" != "--end-of-args--" ]; do
     --dir=*) DIR="${1#--dir=}" ;;
     --role) shift; [ "$1" != "--end-of-args--" ] || fail "--role needs a role name."; ASSUME_ROLE="$1" ;;
     --role=*) ASSUME_ROLE="${1#--role=}" ;;
+    --detach) DETACH=1; set -- "$@" "$1" ;;
     *) set -- "$@" "$1" ;;
   esac
   shift
@@ -180,13 +182,19 @@ INIT_ARGS="--pkg-dev $PKG_DEV"
 [ -n "$ASSUME_ROLE" ] && INIT_ARGS="$INIT_ARGS --role $ASSUME_ROLE"
 pnpm dev init $INIT_ARGS "$@"
 
-# init rewrites package.json with the package's real dependency set - oxlint,
-# oxfmt, the type-aware engine - so the first install only ever got platform-pkg-dev.
-echo "platform-pkg-dev: installing the package's dependencies"
-pnpm install
+if [ -n "$DETACH" ]; then
+  # Detached packages own everything directly - no dev CLI, no dev sync.
+  # init already ran pnpm install and wired git hooks.
+  echo "platform-pkg-dev: detached package scaffolded"
+else
+  # init rewrites package.json with the package's real dependency set - oxlint,
+  # oxfmt, the type-aware engine - so the first install only ever got platform-pkg-dev.
+  echo "platform-pkg-dev: installing the package's dependencies"
+  pnpm install
 
-echo "platform-pkg-dev: wiring git hooks"
-pnpm dev hooks install
+  echo "platform-pkg-dev: wiring git hooks"
+  pnpm dev hooks install
+fi
 
 echo 'As a shortcut to govuk-connect/dev add this to your .zshrc / .bashrc:
 

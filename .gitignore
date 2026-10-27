@@ -6,3 +6,5 @@ coverage/
 .claude
 .pre-commit-config.yaml
 .npmrc
+sam/.aws-sam/
+sam/.aws-s3-file-store/

@@ -160,3 +160,42 @@ describe('renderTemplateDir with force', () => {
     expect(await readFile(join(dir, 'tsconfig.json'), 'utf8')).toContain('platform-pkg-dev');
   });
 });
+
+describe('renderTemplateDir detached', () => {
+  it('renders standalone tsconfig with no extends', async () => {
+    const dir = await scratch();
+    const report = await renderTemplateDir('detached', dir, VARS, { force: false });
+
+    expect(report.written).toContain('tsconfig.json');
+    const tsconfig = await readFile(join(dir, 'tsconfig.json'), 'utf8');
+    expect(tsconfig).not.toContain('extends');
+    expect(tsconfig).toContain('"strict": true');
+  });
+
+  it('renders standalone oxlintrc with no extends', async () => {
+    const dir = await scratch();
+    await renderTemplateDir('detached', dir, VARS, { force: false });
+
+    const oxlintrc = await readFile(join(dir, '.oxlintrc.json'), 'utf8');
+    expect(oxlintrc).not.toContain('extends');
+    expect(oxlintrc).toContain('"eqeqeq"');
+  });
+
+  it('renders standalone vitest config with no platform-pkg-dev import', async () => {
+    const dir = await scratch();
+    await renderTemplateDir('detached', dir, VARS, { force: false });
+
+    const vitest = await readFile(join(dir, 'vitest.config.ts'), 'utf8');
+    expect(vitest).not.toContain('platform-pkg-dev');
+    expect(vitest).toContain('vitest/config');
+  });
+
+  it('renders standalone githook shims with no platform-pkg-dev reference', async () => {
+    const dir = await scratch();
+    await renderTemplateDir('detached', dir, VARS, { force: false });
+
+    const hook = await readFile(join(dir, '.githooks', 'pre-commit'), 'utf8');
+    expect(hook).not.toContain('platform-pkg-dev');
+    expect(hook).toContain('pre-commit');
+  });
+});

@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import {
+  buildDetachedPackageJson,
   buildPackageJson,
   validatePackageName,
   validateTeam,
@@ -20,7 +21,7 @@ import {
   writeGenerated,
   type WriteReport,
 } from '../lib/render.js';
-import { CONFIG_FILE, EXTEND_FILE } from '../lib/pre-commit.js';
+import { CONFIG_FILE, EXTEND_FILE, renderDetachedConfig } from '../lib/pre-commit.js';
 import { FORMAT_CONFIG_FILE } from '../lib/format.js';
 import { renderExampleFiles, renderManagedFiles, writeManagedFile } from '../lib/managed.js';
 import { gitRoot, packageDirWithinRepo } from '../lib/git.js';
@@ -51,6 +52,7 @@ Options
   --standalone       Its own repository, even if a workspace root is above it
   --yes              Accept defaults for anything not passed as a flag
   --no-install       Do not run pnpm install after scaffolding
+  --detach           Standalone package with no platform-pkg-dev dependency
   --force            Overwrite existing files
   --skip-preflight   Do not verify the pinned tool versions
   --help             Show this message
@@ -79,6 +81,7 @@ export async function runInit(argv: readonly string[]): Promise<void> {
       'no-workspace': { type: 'boolean' },
       member: { type: 'boolean' },
       standalone: { type: 'boolean' },
+      detach: { type: 'boolean' },
       yes: { type: 'boolean', short: 'y' },
       'no-install': { type: 'boolean' },
       force: { type: 'boolean' },
@@ -131,6 +134,7 @@ export async function runInit(argv: readonly string[]): Promise<void> {
       pkgDevSpec,
       acceptDefaults,
       isMember,
+      detach: values.detach === true,
       install: values['no-install'] !== true,
     });
   } finally {
@@ -309,9 +313,14 @@ async function scaffold(
     pkgDevSpec: string;
     acceptDefaults: boolean;
     isMember: boolean;
+    detach: boolean;
     install: boolean;
   },
 ): Promise<void> {
+  if (options.detach) {
+    return scaffoldDetached(targetDir, answers, options);
+  }
+
   await mkdir(targetDir, { recursive: true });
 
   const vars = {
@@ -320,8 +329,6 @@ async function scaffold(
     role: answers.role,
     cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json' : '',
     codeArtifactAccount: String(CODE_ARTIFACT_ACCOUNT),
-    // Carries its own surrounding blank lines so the README is valid markdown
-    // whether or not the section is present.
     cdkSection: answers.cdk
       ? [
           '',
@@ -334,7 +341,7 @@ async function scaffold(
           'pnpm dev cdk:init',
           '```',
           '',
-          'It runs `cdk init`, then lays this package’s `bin/app.ts`,',
+          "It runs `cdk init`, then lays this package's `bin/app.ts`,",
           '`lib/main.stack.ts` and `cdk/tsconfig.json` over the result. The generated',
           '`cdk.json` is kept as-is: its feature flags have to match the CDK version,',
           'and hand-maintaining that list would rot on every upgrade.',
@@ -351,9 +358,6 @@ async function scaffold(
 
   step(`Scaffolding ${bold(answers.packageName)} in ${dim(targetDir)}`);
 
-  // start.sh writes a stub package.json so pnpm can install platform-pkg-dev at all.
-  // It marks it `once.bootstrap`, which is the signal that this one file is
-  // disposable - without it init would refuse and leave the stub in place.
   const bootstrapped = await isBootstrapStub(targetDir);
 
   reports.push(
@@ -365,17 +369,12 @@ async function scaffold(
   reports.push(
     await renderTemplateDir('base', targetDir, vars, {
       ...options,
-      // A member inherits lint rules from the workspace root.
       skip: options.isMember ? ['.oxlintrc.json'] : [],
     }),
   );
 
-  // Existing extend are read back in, so re-running init with --force on a
-  // configured package does not silently drop its overrides.
   const extend = await readIfPresent(join(targetDir, EXTEND_FILE));
 
-  // Files platform-pkg-dev owns outright, rendered by the same code `dev sync` uses so
-  // a fresh package is in sync by construction rather than by coincidence.
   const managedContext = {
     cwd: targetDir,
     packageDir: packageDirWithinRepo(targetDir),
@@ -411,24 +410,13 @@ async function scaffold(
   for (const file of written.toSorted()) ok(file);
   for (const file of skipped.toSorted()) warn(`${file} (exists, left alone)`);
 
-  // oxfmt has its own canonical key order for package.json, which the manifest
-  // builder does not try to reproduce. Without this a freshly scaffolded
-  // package fails `dev format --check` before anyone has touched it, and the
-  // first commit's format hook rewrites a file nobody edited.
-  //
-  // Resolved from platform-pkg-dev, so this works before the target has node_modules.
   runTool('oxfmt', ['.'], { cwd: targetDir, stdio: 'ignore' });
 
-  // Installed here rather than left as a next step: until pnpm has run, the
-  // package has no `dev` binary, so every command the notes below suggest -
-  // including `dev hooks install` - would fail.
   if (options.install) {
     info('');
     installDependencies(targetDir);
   }
 
-  // Wire up git hooks automatically when the package is a standalone root
-  // inside a git repository. Members inherit hooks from the workspace root.
   const inRepo = gitRoot(targetDir) !== undefined;
   if (options.install && !options.isMember && inRepo) {
     info('');
@@ -455,11 +443,106 @@ async function scaffold(
       info(`  pnpm dev hooks install` + dim('   # wires .githooks, builds the hook envs'));
     }
     info('');
-    info(dim('  Install pre-commit (brew install pre-commit) and the Oxc VS Code'));
-    info(dim('  extension (oxc.oxc-vscode) if you have not already - see README.md.'));
+    info(dim('  Install the Oxc VS Code extension (oxc.oxc-vscode) - see README.md.'));
   }
   if (skipped.length > 0) {
     info('');
     info(dim('Re-run with --force to overwrite the files that were left alone.'));
   }
+}
+
+async function scaffoldDetached(
+  targetDir: string,
+  answers: ScaffoldAnswers,
+  options: {
+    force: boolean;
+    acceptDefaults: boolean;
+    install: boolean;
+  },
+): Promise<void> {
+  await mkdir(targetDir, { recursive: true });
+
+  const vars = {
+    packageName: answers.packageName,
+    team: answers.team,
+    role: answers.role,
+    cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json' : '',
+    codeArtifactAccount: String(CODE_ARTIFACT_ACCOUNT),
+    cdkSection: '',
+  };
+
+  if (!(await confirmOverwrites(targetDir, answers, options))) {
+    fail('Cancelled - nothing was written.');
+  }
+
+  const reports: WriteReport[] = [];
+
+  step(`Scaffolding ${bold(answers.packageName)} (detached) in ${dim(targetDir)}`);
+
+  const bootstrapped = await isBootstrapStub(targetDir);
+
+  reports.push(
+    await writeGenerated(targetDir, 'package.json', buildDetachedPackageJson(answers), {
+      force: options.force || bootstrapped,
+    }),
+  );
+
+  // Detached templates: standalone tsconfig, oxlintrc, vitest.config (no extends)
+  reports.push(await renderTemplateDir('detached', targetDir, vars, options));
+
+  // Seed files from base: src/index.ts, src/types.ts, src/index.test.ts, .gitignore
+  reports.push(
+    await renderTemplateDir('base', targetDir, vars, {
+      ...options,
+      skip: ['tsconfig.json', '.oxlintrc.json', 'vitest.config.ts', 'README.md'],
+    }),
+  );
+
+  // Static pre-commit config with direct tool calls
+  const preCommitConfig = await renderDetachedConfig();
+  reports.push(await writeGenerated(targetDir, CONFIG_FILE, preCommitConfig, options));
+
+  if (answers.isPackage) {
+    reports.push(await renderTemplateDir('package', targetDir, vars, options));
+  }
+
+  const { written, skipped } = mergeReports(reports);
+
+  for (const file of written.toSorted()) ok(file);
+  for (const file of skipped.toSorted()) warn(`${file} (exists, left alone)`);
+
+  // Format with oxfmt (resolved from platform-pkg-dev at scaffold time)
+  runTool('oxfmt', ['.'], { cwd: targetDir, stdio: 'ignore' });
+
+  if (options.install) {
+    info('');
+    installDependencies(targetDir);
+  }
+
+  const inRepo = gitRoot(targetDir) !== undefined;
+  if (options.install && inRepo) {
+    info('');
+    step('Wiring git hooks');
+    const { spawnSync } = await import('node:child_process');
+    spawnSync('git', ['config', 'core.hooksPath', '.githooks'], { cwd: targetDir });
+    ok('core.hooksPath -> .githooks');
+  }
+
+  if (options.install && answers.cdk) {
+    info('');
+    await runCdkInit([], { cwd: targetDir });
+  }
+
+  info('');
+  info(bold('Next steps'));
+  if (!options.install) {
+    info(`  pnpm install`);
+  }
+  if (!inRepo) {
+    info(`  git init`);
+  }
+  info(`  git config core.hooksPath .githooks`);
+  info('');
+  info(dim('  This package is standalone - it does not depend on platform-pkg-dev.'));
+  info(dim('  All config files are owned by this package and can be edited directly.'));
 }
