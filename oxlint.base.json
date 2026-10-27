@@ -23,6 +23,7 @@
     "typescript/no-duplicate-type-constituents": "off",
     "eslint/no-await-in-loop": "off",
     "unicorn/consistent-function-scoping": "off",
+    "typescript/no-extraneous-class": "off",
     // CDK constructs register themselves with their parent in the
     // constructor, so `new Bucket(this, 'X')` for its side effect is the
     // framework's core idiom rather than a mistake. Leaving this on forces a
@@ -39,6 +40,7 @@
       "files": ["**/*.test.ts", "**/*.spec.ts"],
       "rules": {
         "no-console": "off",
+        "no-extraneous-class": "off",
         "typescript/no-explicit-any": "off",
         "typescript/no-non-null-assertion": "off",
         // `expect(obj.method).toBeDefined()` references a method without
