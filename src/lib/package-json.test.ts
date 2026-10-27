@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { buildPackageJson, validatePackageName, validateTeam } from './package-json.js';
+import {
+  buildDetachedPackageJson,
+  buildPackageJson,
+  validatePackageName,
+  validateTeam,
+} from './package-json.js';
 import { CDK, NODE_MAJOR, PACKAGE_MANAGER, PUBLISH_CONFIG_REGISTRY } from '../versions.js';
 
 const base = {
   packageName: 'connect-org',
   team: 'identity',
+  role: 'connect-development-admin',
   cdk: false,
   isPackage: false,
   isWorkspace: false,
@@ -44,7 +50,10 @@ describe('buildPackageJson', () => {
     expect(manifest['engines']).toEqual({ node: `>=${NODE_MAJOR}` });
     expect(manifest['packageManager']).toBe(PACKAGE_MANAGER);
     expect(manifest['publishConfig']).toStrictEqual({ registry: PUBLISH_CONFIG_REGISTRY });
-    expect(manifest['once']).toEqual({ team: 'identity' });
+    expect(manifest['once']).toEqual({
+      team: 'identity',
+      aws: { region: 'eu-west-2', roles: { dev: 'connect-development-admin' } },
+    });
     expect(manifest).toStrictEqual({
       name: 'connect-org',
       version: '0.0.0',
@@ -65,7 +74,10 @@ describe('buildPackageJson', () => {
       publishConfig: {
         registry: PUBLISH_CONFIG_REGISTRY,
       },
-      once: { team: 'identity' },
+      once: {
+        team: 'identity',
+        aws: { region: 'eu-west-2', roles: { dev: 'connect-development-admin' } },
+      },
     });
   });
 
@@ -113,5 +125,66 @@ describe('buildPackageJson', () => {
     expect(deps['aws-cdk-lib']).toBe(CDK.dependencies['aws-cdk-lib']);
     expect(deps['constructs']).toBe(CDK.dependencies.constructs);
     expect(devDeps['aws-cdk']).toBe(CDK.devDependencies['aws-cdk']);
+  });
+});
+
+const parseDetached = (answers: Parameters<typeof buildDetachedPackageJson>[0]) =>
+  JSON.parse(buildDetachedPackageJson(answers)) as Record<string, unknown>;
+
+describe('buildDetachedPackageJson', () => {
+  it('does not include platform-pkg-dev as a dependency', () => {
+    const manifest = parseDetached(base);
+    const devDeps = manifest['devDependencies'] as Record<string, string>;
+    expect(devDeps['platform-pkg-dev']).toBeUndefined();
+  });
+
+  it('includes toolchain dependencies directly', () => {
+    const manifest = parseDetached(base);
+    const devDeps = manifest['devDependencies'] as Record<string, string>;
+    expect(devDeps['vitest']).toBeDefined();
+    expect(devDeps['oxlint']).toBeDefined();
+    expect(devDeps['oxfmt']).toBeDefined();
+    expect(devDeps['oxlint-tsgolint']).toBeDefined();
+    expect(devDeps['@types/node']).toBeDefined();
+  });
+
+  it('has a scripts block with direct tool commands', () => {
+    const manifest = parseDetached(base);
+    const scripts = manifest['scripts'] as Record<string, string>;
+    expect(scripts['build']).toBe('tsc');
+    expect(scripts['test']).toBe('vitest run');
+    expect(scripts['lint']).toBe('oxlint --type-aware');
+    expect(scripts['format']).toBe('oxfmt');
+    expect(scripts['typecheck']).toBe('tsc --noEmit');
+  });
+
+  it('still includes CDK deps and scripts when asked', () => {
+    const manifest = parseDetached({ ...base, cdk: true });
+    const deps = manifest['dependencies'] as Record<string, string>;
+    expect(deps['aws-cdk-lib']).toBe(CDK.dependencies['aws-cdk-lib']);
+    expect(deps['constructs']).toBe(CDK.dependencies.constructs);
+
+    const scripts = manifest['scripts'] as Record<string, string>;
+    expect(scripts['synth']).toBe('cd cdk && cdk synth');
+    expect(scripts['deploy']).toBe('cd cdk && cdk deploy');
+    expect(scripts['scan']).toContain('checkov');
+  });
+
+  it('does not include CDK scripts when CDK is not selected', () => {
+    const manifest = parseDetached(base);
+    const scripts = manifest['scripts'] as Record<string, string>;
+    expect(scripts['synth']).toBeUndefined();
+    expect(scripts['deploy']).toBeUndefined();
+    expect(scripts['scan']).toBeUndefined();
+  });
+
+  it('keeps engines, packageManager and once fields', () => {
+    const manifest = parseDetached(base);
+    expect(manifest['engines']).toEqual({ node: `>=${NODE_MAJOR}` });
+    expect(manifest['packageManager']).toBe(PACKAGE_MANAGER);
+    expect(manifest['once']).toEqual({
+      team: 'identity',
+      aws: { region: 'eu-west-2', roles: { dev: 'connect-development-admin' } },
+    });
   });
 });

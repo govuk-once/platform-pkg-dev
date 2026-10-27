@@ -224,6 +224,36 @@ export async function renderConfig(
 }
 
 /**
+ * Renders a standalone pre-commit config for detached packages.
+ *
+ * Same external hooks as the managed config, but local hooks call tools
+ * directly (oxfmt, oxlint, tsc, vitest) instead of going through the `dev` CLI.
+ */
+export async function renderDetachedConfig(): Promise<string> {
+  const master = await readFile(join(TEMPLATES_ROOT, MASTER), 'utf8');
+  const vars = preCommitVars();
+  const doc = parseDocument(substitute(master, vars));
+
+  const hooks = indexHooks(doc);
+
+  const replacements: Record<string, string> = {
+    'dev-format': 'oxfmt',
+    'dev-lint': 'oxlint --type-aware',
+    'dev-typecheck': 'tsc --noEmit',
+    'dev-test': 'vitest run --passWithNoTests',
+  };
+
+  for (const [id, entry] of Object.entries(replacements)) {
+    const hook = hooks.get(id);
+    if (hook === undefined) continue;
+    hook.set('entry', entry);
+    hook.set('id', id.replace('dev-', ''));
+  }
+
+  return doc.toString({ lineWidth: 0, flowCollectionPadding: false });
+}
+
+/**
  * Line-level summary of how a package's config differs from the rendered one,
  * so `sync --check` can say what changed rather than just "it differs".
  */

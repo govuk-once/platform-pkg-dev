@@ -1,0 +1,20 @@
+networks:
+  sam-local:
+    name: sam-local
+    driver: bridge
+
+services:
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: sam-localstack
+    networks: [sam-local]
+    ports:
+      - 4566:4566
+    environment:
+      SERVICES: dynamodb,s3,kms
+      DEFAULT_REGION: eu-west-2
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:4566/_localstack/health | grep -q running']
+      interval: 5s
+      timeout: 3s
+      retries: 10

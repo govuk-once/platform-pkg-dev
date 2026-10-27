@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+cd "$(cd "$(dirname "$0")/.." && pwd)"
+
+PRE_COMMIT="./node_modules/.bin/pre-commit"
+if [ ! -x "$PRE_COMMIT" ]; then
+  echo "pre-commit not found. Run: pnpm install" >&2
+  exit 1
+fi
+
+"$PRE_COMMIT" hook-impl \
+  --config=.pre-commit-config.yaml \
+  --hook-type=pre-commit \
+  --hook-dir .githooks \
+  -- "$@"
+
+EXTEND=".githooks/pre-commit.extend.sh"
+if [ -f "$EXTEND" ]; then
+  echo "Running $EXTEND"
+  if ! sh "$EXTEND" "$@"; then
+    echo "$EXTEND failed - pre-commit blocked." >&2
+    exit 1
+  fi
+fi

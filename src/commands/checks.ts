@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { bold, dim, error, fail, green, ok, step } from '../lib/log.js';
 import { CONFIG_FILE } from '../lib/pre-commit.js';
-import { which } from '../lib/which.js';
+import { resolvePreCommit } from '../lib/pre-commit-bin.js';
 import { runSync } from './sync.js';
 import type { RunContext } from './run.js';
 
@@ -63,9 +63,9 @@ async function runStage(
     return 0;
   }
 
-  if (which('pre-commit') === undefined) {
-    error(`pre-commit is not on PATH, so the ${stage} hooks cannot run.`);
-    process.stderr.write(`  ${dim('dev doctor')}\n`);
+  const bin = resolvePreCommit(context.cwd);
+  if (bin === undefined) {
+    error(`pre-commit is not installed — run \`dev hooks install\` to set it up.`);
     return 1;
   }
 
@@ -86,7 +86,7 @@ async function runStage(
   const args = ['run', '--hook-stage', stage];
   if (!argv.includes('--changed')) args.push('--all-files');
 
-  const result = spawnSync('pre-commit', args, { stdio: 'inherit', cwd: context.cwd });
+  const result = spawnSync(bin, args, { stdio: 'inherit', cwd: context.cwd });
 
   if (result.error !== undefined) {
     error(`Failed to run pre-commit: ${result.error.message}`);
