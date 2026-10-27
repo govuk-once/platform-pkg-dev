@@ -64,12 +64,8 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1156.0",
-    "@aws-sdk/lib-dynamodb": "^3.1156.0",
-    "@esbuild/linux-x64": "^0.28.2",
     "@types/node": "24.13.3",
     "aws-cdk": "2.1136.0",
-    "esbuild": "^0.28.2",
     "oxlint-tsgolint": "7.0.2001"
   },
   "engines": {
