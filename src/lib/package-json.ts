@@ -41,7 +41,7 @@ export function validateTeam(team: string): string | undefined {
  */
 export function buildPackageJson(answers: ScaffoldAnswers, pkgDevSpec: string): string {
   const dependencies: Record<string, string> = {};
-  const devDependencies: Record<string, string> = { 'platform-pkg-dev': pkgDevSpec };
+  const devDependencies: Record<string, string> = { '@govuk-connect/dev': pkgDevSpec };
 
   // Same list `dev sync` enforces, so a fresh package starts in sync by
   // construction rather than by two places happening to agree.
@@ -84,9 +84,6 @@ export function buildPackageJson(answers: ScaffoldAnswers, pkgDevSpec: string): 
     devDependencies: sortKeys(devDependencies),
     publishConfig: {
       registry: MANAGED_FIELDS.publishConfig.registry,
-    },
-    pnpm: {
-      onlyBuiltDependencies: ['@govuk-connect/dev'],
     },
     once: {
       team: answers.team,
