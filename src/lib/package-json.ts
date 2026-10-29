@@ -85,9 +85,6 @@ export function buildPackageJson(answers: ScaffoldAnswers, pkgDevSpec: string): 
     publishConfig: {
       registry: MANAGED_FIELDS.publishConfig.registry,
     },
-    pnpm: {
-      onlyBuiltDependencies: ['@govuk-connect/dev'],
-    },
     once: {
       team: answers.team,
       aws: { region: 'eu-west-2', roles: { dev: answers.role } },

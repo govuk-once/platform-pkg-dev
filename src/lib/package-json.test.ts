@@ -74,9 +74,6 @@ describe('buildPackageJson', () => {
       publishConfig: {
         registry: PUBLISH_CONFIG_REGISTRY,
       },
-      pnpm: {
-        onlyBuiltDependencies: ['@govuk-connect/dev'],
-      },
       once: {
         team: 'identity',
         aws: { region: 'eu-west-2', roles: { dev: 'connect-development-admin' } },
