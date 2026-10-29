@@ -32,7 +32,7 @@ has_tty() { { true > /dev/tty; } 2>/dev/null; }
 # `start.sh --local` resolves platform-pkg-dev from a sibling checkout instead of
 # the registry.  Strip the keyword before normal arg parsing begins.
 if [ "${1:-}" = "--local" ]; then
-  PKG_DEV="link:../platform-pkg-dev"
+  PKG_DEV="file:../platform-pkg-dev"
   shift
 fi
 
@@ -167,10 +167,21 @@ else
   "once": { "bootstrap": true }
 }
 JSON
+
+  # Automatically approve build/postinstall scripts for the dev dependency
+  # before running pnpm install so pnpm doesn't fail with ERR_PNPM_IGNORED_BUILDS.
+  # Pre-seed pnpm-workspace.yaml so pnpm 10/12 allows build scripts on initial install
+  cat > pnpm-workspace.yaml <<YAML
+packages:
+  - '.'
+allowBuilds:
+  "@govuk-connect/dev": true
+  "@govuk-connect/dev@${PKG_DEV}": true
+YAML
 fi
 
 echo "platform-pkg-dev: installing (pnpm ${have})"
-pnpm install || fail "pnpm install failed.
+DEV_BOOTSTRAPPING=1 pnpm install || fail "pnpm install failed.
   If platform-pkg-dev is not published yet, point at a local checkout instead:
     pnpm add -D platform-pkg-dev@link:/path/to/platform-pkg-dev && pnpm dev init"
 
@@ -186,14 +197,6 @@ if [ -n "$DETACH" ]; then
   # Detached packages own everything directly - no dev CLI, no dev sync.
   # init already ran pnpm install and wired git hooks.
   echo "platform-pkg-dev: detached package scaffolded"
-else
-  # init rewrites package.json with the package's real dependency set - oxlint,
-  # oxfmt, the type-aware engine - so the first install only ever got platform-pkg-dev.
-  echo "platform-pkg-dev: installing the package's dependencies"
-  pnpm install
-
-  echo "platform-pkg-dev: wiring git hooks"
-  pnpm dev hooks install
 fi
 
 echo 'As a shortcut to govuk-connect/dev add this to your .zshrc / .bashrc:

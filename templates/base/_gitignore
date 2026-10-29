@@ -12,15 +12,7 @@ coverage/
 # Environment
 .env
 .env.*
-
-# Local scaffolding artefacts. `dev init` writes *.example files as a starting
-# point - rename one to activate it. The .env.example exception comes after the
-# wildcard because git applies the last matching pattern.
-*.example
 !.env.example
-
-# Claude Code
-.claude/
 
 # Editors
 .DS_Store
