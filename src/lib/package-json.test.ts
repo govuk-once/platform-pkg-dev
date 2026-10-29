@@ -68,7 +68,7 @@ describe('buildPackageJson', () => {
         oxfmt: '0.63.0',
         oxlint: '1.78.0',
         'oxlint-tsgolint': '7.0.2001',
-        'platform-pkg-dev': '0.0.1',
+        '@govuk-connect/dev': '0.0.1',
         vitest: '4.1.10',
       },
       publishConfig: {
@@ -90,12 +90,12 @@ describe('buildPackageJson', () => {
 
   it('depends on platform-pkg-dev at the requested spec', () => {
     const devDeps = parse(base)['devDependencies'] as Record<string, string>;
-    expect(devDeps['platform-pkg-dev']).toBe('0.0.1');
+    expect(devDeps['@govuk-connect/dev']).toBe('0.0.1');
 
     const linked = JSON.parse(buildPackageJson(base, 'file:../platform-pkg-dev')) as {
       devDependencies: Record<string, string>;
     };
-    expect(linked.devDependencies['platform-pkg-dev']).toBe('file:../platform-pkg-dev');
+    expect(linked.devDependencies['@govuk-connect/dev']).toBe('file:../platform-pkg-dev');
   });
 
   it('marks non-library packages private and omits an exports map', () => {

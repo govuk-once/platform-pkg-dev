@@ -33,9 +33,9 @@ describe('start.sh', () => {
     expect(value('NODE_MAJOR')).toBe(String(NODE_MAJOR));
   });
 
-  it('asks for a platform-pkg-dev version compatible with this one', () => {
+  it('asks for a @govuk-connect/dev version compatible with this one', () => {
     const spec = value('PKG_DEV') ?? '';
-    expect(spec.startsWith('^')).toBe(true);
+    expect(spec.startsWith('^')).toBe(false);
 
     // A caret range already covers later patches, so this must not be pinned to
     // the exact current version - only prevented from asking for one that does
