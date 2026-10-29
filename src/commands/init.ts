@@ -41,7 +41,7 @@ Options
   --name <name>      Package name, e.g. connect-org
   --team <team>      Owning team
   --pkg-dev <spec>   Dependency spec for platform-pkg-dev itself (default: ^<version>).
-                     Use link:../platform-pkg-dev while platform-pkg-dev is unpublished.
+                     Use file:../platform-pkg-dev while platform-pkg-dev is unpublished.
   --cdk              Add the AWS CDK dependency set
   --no-cdk           Skip CDK
   --package          Publishable library (adds dual ESM/CJS tsconfigs)
@@ -201,7 +201,7 @@ async function collectAnswers(
 
   const cdk =
     flagPair(flags.cdk, flags['no-cdk'], 'cdk') ??
-    (acceptDefaults ? false : await confirm('Add CDK?', { defaultValue: false, flag: '--cdk' }));
+    (acceptDefaults ? false : await confirm('Add CDK?', { defaultValue: true, flag: '--cdk' }));
 
   const isPackage =
     flagPair(flags.package, flags['no-package'], 'package') ??
@@ -219,7 +219,7 @@ async function collectAnswers(
     (acceptDefaults || isMember
       ? false
       : await confirm('Is this a workspace root (packages/* beneath it)?', {
-          defaultValue: false,
+          defaultValue: true,
           flag: '--workspace',
         }));
 

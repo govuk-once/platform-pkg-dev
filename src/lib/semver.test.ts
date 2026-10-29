@@ -32,7 +32,7 @@ describe('isRegistrySpec', () => {
   it('never rewrites a local spec', () => {
     // Someone developing platform-pkg-dev itself must not have their link replaced
     // with a published version.
-    expect(isRegistrySpec('link:../platform-pkg-dev')).toBe(false);
+    expect(isRegistrySpec('file:../platform-pkg-dev')).toBe(false);
     expect(isRegistrySpec('file:../platform-pkg-dev')).toBe(false);
     expect(isRegistrySpec('workspace:*')).toBe(false);
     expect(isRegistrySpec('git+https://example.com/x.git')).toBe(false);

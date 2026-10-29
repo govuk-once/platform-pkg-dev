@@ -36,7 +36,7 @@ bash platform-pkg-dev/start.sh --local \
   --role connect-development-admin
 ```
 
-`--local` resolves `platform-pkg-dev` as `link:../platform-pkg-dev` from the new package directory.
+`--local` resolves `platform-pkg-dev` as `file:../platform-pkg-dev` from the new package directory.
 
 ## Commands
 

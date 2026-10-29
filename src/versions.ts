@@ -25,7 +25,7 @@ interface VersionsFile {
   readonly tools: Readonly<Record<string, string>>;
   readonly hookRevs: Readonly<Record<string, string>>;
   readonly versionUrl: string | null;
-  readonly workspaceSettings: Readonly<Record<string, string | number | boolean>>;
+  readonly workspaceSettings: Readonly<Record<string, unknown>>;
 }
 
 /** Resolves to <package root>/versions.json from both src/ and dist/. */
@@ -177,5 +177,4 @@ export const VERSION_URL: string | undefined = FILE.versionUrl ?? undefined;
  * rather than inherited. Only these keys are touched - `packages:` globs and
  * anything else a package adds are its own.
  */
-export const WORKSPACE_SETTINGS: Readonly<Record<string, string | number | boolean>> =
-  FILE.workspaceSettings;
+export const WORKSPACE_SETTINGS: Readonly<Record<string, unknown>> = FILE.workspaceSettings;

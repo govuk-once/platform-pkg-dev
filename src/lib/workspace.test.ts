@@ -19,7 +19,7 @@ describe('applyWorkspaceSettings', () => {
     const parsed = parse(content);
 
     for (const [key, value] of Object.entries(WORKSPACE_SETTINGS)) {
-      expect(parsed[key], key).toBe(value);
+      expect(parsed[key], key).toEqual(value);
     }
     expect(drift).toHaveLength(Object.keys(WORKSPACE_SETTINGS).length);
   });

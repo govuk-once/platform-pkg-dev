@@ -74,6 +74,9 @@ describe('buildPackageJson', () => {
       publishConfig: {
         registry: PUBLISH_CONFIG_REGISTRY,
       },
+      pnpm: {
+        onlyBuiltDependencies: ['@govuk-connect/dev'],
+      },
       once: {
         team: 'identity',
         aws: { region: 'eu-west-2', roles: { dev: 'connect-development-admin' } },
@@ -89,10 +92,10 @@ describe('buildPackageJson', () => {
     const devDeps = parse(base)['devDependencies'] as Record<string, string>;
     expect(devDeps['platform-pkg-dev']).toBe('0.0.1');
 
-    const linked = JSON.parse(buildPackageJson(base, 'link:../platform-pkg-dev')) as {
+    const linked = JSON.parse(buildPackageJson(base, 'file:../platform-pkg-dev')) as {
       devDependencies: Record<string, string>;
     };
-    expect(linked.devDependencies['platform-pkg-dev']).toBe('link:../platform-pkg-dev');
+    expect(linked.devDependencies['platform-pkg-dev']).toBe('file:../platform-pkg-dev');
   });
 
   it('marks non-library packages private and omits an exports map', () => {

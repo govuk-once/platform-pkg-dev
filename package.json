@@ -1,6 +1,6 @@
 {
   "name": "@govuk-connect/dev",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
   "bin": {
@@ -13,6 +13,7 @@
     "tsconfig.base.json",
     "oxlint.base.json",
     "versions.json",
+    "scripts",
     "start.sh",
     "VERSION"
   ],
@@ -47,6 +48,8 @@
     "prepare": "pnpm run build && ./hooks/setup-git-config && node dist/cli.js hooks install 2>/dev/null || true",
     "prepublishOnly": "pnpm run build",
     "pretest": "pnpm build",
+    "preinstall": "node scripts/preinstall.js",
+    "postinstall": "node scripts/postinstall.js",
     "sam:synth": "rm -rf sam/.aws-sam && SAM_LOCAL=true cdk synth -a 'node sam/example/app.ts' -o sam/.aws-sam",
     "sam:up": "pnpm sam:down; docker compose -f sam/docker-compose.yml up -d && node sam/init-local-resources.ts",
     "sam:down": "docker compose -f sam/docker-compose.yml down",
