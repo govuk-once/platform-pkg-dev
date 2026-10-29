@@ -58,3 +58,6 @@ export {
   toolVersion,
   versionOf,
 } from './versions.js';
+// TODO make sure GDSEnv is in the same style as the rest of this package and tests
+export { GDSEnv, GDS_ENVIRONMENT, GDS_ENVIRONMENTS } from './lib/gds-env.js';
+export type { GDSEnvironment, ProcessEnvLike } from './lib/gds-env.js';
