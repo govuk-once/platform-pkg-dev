@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "rootDir": "templates",
+    "types": ["node"]
+  },
+  "include": ["templates"],
+  "exclude": ["**/*.test.ts", "templates/**/node_modules", "templates/**/dist"]
+}
