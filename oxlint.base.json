@@ -2,7 +2,7 @@
 // Packages extend this from their own .oxlintrc.json rather than copying it,
 // so rules stay centrally owned and move in one place.
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "$schema": "../../oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc", "promise", "import"],
   "categories": {
     "correctness": "error",
