@@ -38,6 +38,8 @@
   "workspaceSettings": {
     "blockExoticSubdeps": true,
     "trustPolicy": "no-downgrade",
+    "minimumReleaseAge": 10080,
+    "minimumReleaseAgeExclude": ["@govuk-connect/dev"],
     "allowBuilds": {
       "@govuk-connect/dev": true,
       "@govuk-connect/dev@file:../platform-pkg-dev": true
