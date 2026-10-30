@@ -53,7 +53,7 @@ describe('renderManagedFiles', () => {
   it('keeps the hook shims thin, delegating to platform-pkg-dev', async () => {
     const hook = find(await render('.'), '.githooks/pre-commit').content;
 
-    expect(hook).toContain('node_modules/platform-pkg-dev/hooks/dev-hook');
+    expect(hook).toContain('node_modules/@govuk-connect/dev/hooks/dev-hook');
     // The logic must live in platform-pkg-dev, not be copied into every package.
     expect(hook).not.toContain('pre-commit hook-impl');
     // Resolve the package root, export it, hand over. Nothing more: the chain

@@ -10,4 +10,4 @@
 # package, but running this by hand from the package root must work too.
 DEV_PACKAGE_DIR=$(cd "$(dirname "$0")/.." && pwd)
 export DEV_PACKAGE_DIR
-exec "$DEV_PACKAGE_DIR/node_modules/platform-pkg-dev/hooks/dev-hook" pre-push "$@"
+exec "$DEV_PACKAGE_DIR/node_modules/@govuk-connect/dev/hooks/dev-hook" pre-push "$@"

@@ -1,5 +1,5 @@
 {
-  "extends": "platform-pkg-dev/tsconfig.base.json",
+  "extends": "@govuk-connect/dev/tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",

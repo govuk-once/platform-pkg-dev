@@ -157,7 +157,7 @@ describe('renderTemplateDir with force', () => {
     await writeFile(join(dir, 'tsconfig.json'), '{}', 'utf8');
     await renderTemplateDir('base', dir, VARS, { force: true });
 
-    expect(await readFile(join(dir, 'tsconfig.json'), 'utf8')).toContain('platform-pkg-dev');
+    expect(await readFile(join(dir, 'tsconfig.json'), 'utf8')).toContain('@govuk-connect/dev');
   });
 });
 

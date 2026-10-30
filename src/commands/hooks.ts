@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, chmodSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 import { bold, dim, error, fail, info, ok, step } from '../lib/log.js';
 import { CONFIG_FILE } from '../lib/pre-commit.js';
@@ -8,6 +8,7 @@ import { resolvePreCommit, installPreCommit } from '../lib/pre-commit-bin.js';
 import { which } from '../lib/which.js';
 import { packageDirWithinRepo } from '../lib/git.js';
 import type { RunContext } from './run.js';
+import { fileURLToPath } from 'node:url';
 
 export const HOOKS_USAGE = `${bold('dev hooks')} - wire up the Connect git hooks
 
@@ -91,6 +92,28 @@ function install(cwd: string): number {
 
   if (!existsSync(join(cwd, HOOKS_DIR))) {
     fail(`${HOOKS_DIR}/ does not exist in ${cwd}.`, 'Run `dev init` to scaffold it.');
+  }
+
+  // 1. Make dev-hook inside this package executable
+  try {
+    const pkgDir = dirname(fileURLToPath(import.meta.url));
+    const devHookBinary = join(pkgDir, '../hooks/dev-hook');
+    if (existsSync(devHookBinary)) {
+      chmodSync(devHookBinary, 0o755);
+    }
+  } catch {
+    // Non-fatal if filesystem permissions restrict chmod
+  }
+
+  // 2. Make all generated scripts in .githooks executable
+  const hooksDirPath = join(cwd, HOOKS_DIR);
+  try {
+    const files = readdirSync(hooksDirPath);
+    for (const file of files) {
+      chmodSync(join(hooksDirPath, file), 0o755);
+    }
+  } catch {
+    // Non-fatal
   }
 
   const hooksPath = hooksPathFor(cwd);

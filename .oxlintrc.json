@@ -1,6 +1,4 @@
-// platform-pkg-dev's own lint config. Consumers get the same rules by extending
-// oxlint.base.json out of their node_modules.
 {
-  "extends": ["./oxlint.base.json"],
+  "extends": ["./oxlint.json"],
   "ignorePatterns": ["templates/**"]
 }
