@@ -36,9 +36,10 @@
   "versionUrl": "https://raw.githubusercontent.com/govuk-once/platform-pkg-dev/main/VERSION",
   "$workspaceSettingsComment": "Supply-chain settings platform-pkg-dev owns in each package pnpm-workspace.yaml. minimumReleaseAge is in MINUTES (10080 = 7 days): pnpm refuses any release younger than that, which is the window most malicious publishes are caught in. Note this constrains platform-pkg-dev itself - every version pinned above must be at least that old, including the platform binaries published alongside tools like oxlint, or a package cannot install its own toolchain.",
   "workspaceSettings": {
-    "minimumReleaseAge": 10080,
     "blockExoticSubdeps": true,
     "trustPolicy": "no-downgrade",
+    "minimumReleaseAge": 10080,
+    "minimumReleaseAgeExclude": ["@govuk-connect/dev"],
     "allowBuilds": {
       "@govuk-connect/dev": true,
       "@govuk-connect/dev@file:../platform-pkg-dev": true

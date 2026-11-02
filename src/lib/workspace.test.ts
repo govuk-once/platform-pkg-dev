@@ -49,6 +49,7 @@ describe('applyWorkspaceSettings', () => {
   });
 
   it('reports the previous value when a setting has been changed', () => {
+    // it('reports the previous value when a setting has been changed', () => {
     const { drift } = applyWorkspaceSettings('minimumReleaseAge: 0\n');
     const change = drift.find((entry) => entry.key === 'minimumReleaseAge');
 

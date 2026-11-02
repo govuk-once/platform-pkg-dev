@@ -1,6 +1,6 @@
 {
   "name": "@govuk-connect/dev",
-  "version": "0.0.8",
+  "version": "0.0.10",
   "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
   "bin": {
@@ -36,9 +36,9 @@
     "registry": "https://registry-prod-904690835784.d.codeartifact.eu-west-2.amazonaws.com/npm/registry-prod-repo"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';const v=JSON.parse(readFileSync('package.json','utf8')).version+'\\n';try{if(readFileSync('VERSION','utf8')===v)process.exit(0)}catch{};writeFileSync('VERSION',v)\"",
-    "build:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.src.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';const v=JSON.parse(readFileSync('package.json','utf8')).version+'\\n';try{if(readFileSync('VERSION','utf8')===v)process.exit(0)}catch{};writeFileSync('VERSION',v)\"",
+    "build:watch": "tsc -p tsconfig.src.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.src.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "oxlint --type-aware",
