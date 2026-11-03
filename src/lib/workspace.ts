@@ -34,18 +34,24 @@ export interface SettingDrift {
  * `packages:` globs belong to the package, and overwriting them to enforce a
  * few security settings would be a poor trade.
  */
-export function applyWorkspaceSettings(content: string): {
+export function applyWorkspaceSettings(
+  content: string,
+  options?: { skip?: readonly string[] },
+): {
   readonly content: string;
   readonly drift: readonly SettingDrift[];
 } {
   const doc = parseDocument(content);
   const drift: SettingDrift[] = [];
+  const skipSet = new Set(options?.skip);
 
   // Compared as plain JS rather than YAML nodes, so a list setting such as
   // a list-valued setting would compare by contents rather than by identity.
   const plain = isMap(doc.contents) ? (doc.toJS() as Record<string, unknown>) : {};
 
   for (const [key, value] of Object.entries(WORKSPACE_SETTINGS)) {
+    if (skipSet.has(key)) continue;
+
     const current = plain[key];
     if (JSON.stringify(current) === JSON.stringify(value)) continue;
 
@@ -61,9 +67,12 @@ export function applyWorkspaceSettings(content: string): {
 }
 
 /** Renders a workspace file for a package that has none yet. */
-export function renderWorkspaceFile(globs: readonly string[] = ['packages/*']): string {
+export function renderWorkspaceFile(
+  globs: readonly string[] = ['packages/*'],
+  options?: { skip?: readonly string[] },
+): string {
   const listed = globs.map((glob) => `  - '${glob}'`).join('\n');
-  return applyWorkspaceSettings(`${HEADER}packages:\n${listed}\n`).content;
+  return applyWorkspaceSettings(`${HEADER}packages:\n${listed}\n`, options).content;
 }
 
 /** Reads a package's workspace file, or undefined when it is not one. */
