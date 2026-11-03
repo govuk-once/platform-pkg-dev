@@ -400,7 +400,12 @@ async function scaffold(
   }
 
   if (answers.isWorkspace) {
-    reports.push(await writeGenerated(targetDir, WORKSPACE_FILE, renderWorkspaceFile(), options));
+    reports.push(
+      await writeGenerated(targetDir, WORKSPACE_FILE, renderWorkspaceFile(), {
+        ...options,
+        force: options.force || bootstrapped,
+      }),
+    );
     await mkdir(join(targetDir, 'packages'), { recursive: true });
     await writeGenerated(targetDir, join('packages', '.gitkeep'), '', options);
   }
