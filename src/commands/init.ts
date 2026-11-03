@@ -419,7 +419,7 @@ async function scaffold(
 
   if (options.install) {
     info('');
-    installDependencies(targetDir);
+    installDependencies(targetDir, { skipReleaseAge: bootstrapped });
   }
 
   const inRepo = gitRoot(targetDir) !== undefined;
