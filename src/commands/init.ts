@@ -399,12 +399,21 @@ async function scaffold(
     reports.push(await renderTemplateDir('package', targetDir, vars, options));
   }
 
+  const RELEASE_AGE_KEYS = ['minimumReleaseAge', 'minimumReleaseAgeExclude'] as const;
+
   if (answers.isWorkspace) {
+    // On a fresh bootstrap there is no lockfile, so pnpm resolves the latest
+    // versions of everything.  minimumReleaseAge would reject any package
+    // published in the last 7 days, which is normal for transitive deps.
+    // Write the workspace file without the age policy first so install can
+    // succeed, then rewrite with the full settings afterwards.
     reports.push(
-      await writeGenerated(targetDir, WORKSPACE_FILE, renderWorkspaceFile(), {
-        ...options,
-        force: options.force || bootstrapped,
-      }),
+      await writeGenerated(
+        targetDir,
+        WORKSPACE_FILE,
+        renderWorkspaceFile(undefined, bootstrapped ? { skip: RELEASE_AGE_KEYS } : undefined),
+        { ...options, force: options.force || bootstrapped },
+      ),
     );
     await mkdir(join(targetDir, 'packages'), { recursive: true });
     await writeGenerated(targetDir, join('packages', '.gitkeep'), '', options);
@@ -419,7 +428,13 @@ async function scaffold(
 
   if (options.install) {
     info('');
-    installDependencies(targetDir, { skipReleaseAge: bootstrapped });
+    installDependencies(targetDir);
+  }
+
+  // Now that install has produced a lockfile, apply the full workspace settings
+  // so subsequent installs enforce the release-age policy.
+  if (answers.isWorkspace && bootstrapped) {
+    await writeGenerated(targetDir, WORKSPACE_FILE, renderWorkspaceFile(), { force: true });
   }
 
   const inRepo = gitRoot(targetDir) !== undefined;

@@ -13,18 +13,15 @@ import { which } from './which.js';
  * Returns the exit code rather than throwing, so a caller can carry on and
  * report the rest of its work.
  */
-export function installDependencies(cwd: string, options?: { skipReleaseAge?: boolean }): number {
+export function installDependencies(cwd: string): number {
   if (which('pnpm') === undefined) {
     error('pnpm is not on PATH, so dependencies were not installed.');
     process.stderr.write(`  ${dim('corepack enable pnpm, then run `pnpm install`.')}\n`);
     return 1;
   }
 
-  const args = ['install'];
-  if (options?.skipReleaseAge) args.push('--config.minimumReleaseAge=0');
-
   step('pnpm install');
-  const result = spawnSync('pnpm', args, { stdio: 'inherit', cwd });
+  const result = spawnSync('pnpm', ['install'], { stdio: 'inherit', cwd });
 
   if (result.error !== undefined) fail(`Failed to run pnpm install: ${result.error.message}`);
   if (result.signal !== null) fail(`pnpm install terminated with signal ${result.signal}`);
