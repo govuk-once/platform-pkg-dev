@@ -7,6 +7,10 @@ export interface ScaffoldAnswers {
   readonly team: string;
   /** Add the AWS CDK dependency set. */
   readonly cdk: boolean;
+  /** Add SAM local development support (requires CDK). */
+  readonly sam: boolean;
+  /** Which example stacks to scaffold when SAM is enabled. */
+  readonly samExamples?: readonly ('dynamo' | 'queue')[];
   /** Publishable library: dual ESM/CJS build and an exports map. */
   readonly isPackage: boolean;
   /** Workspace root: gets a pnpm-workspace.yaml with the shared settings. */
@@ -47,8 +51,7 @@ export function buildPackageJson(answers: ScaffoldAnswers, pkgDevSpec: string): 
   // construction rather than by two places happening to agree.
   for (const pin of MANAGED_PINS) {
     if (pin.group === 'cdk' && !answers.cdk) continue;
-    // A workspace member resolves the lint, format and type packages by walking
-    // up to the root, so declaring them again would install duplicates.
+    if (pin.group === 'sam' && !answers.sam) continue;
     if (answers.isMember && pin.scope === 'root') continue;
     const section = pin.section === 'dependencies' ? dependencies : devDependencies;
     section[pin.name] = pin.spec;
@@ -100,6 +103,7 @@ export function buildDetachedPackageJson(answers: ScaffoldAnswers): string {
 
   for (const pin of MANAGED_PINS) {
     if (pin.group === 'cdk' && !answers.cdk) continue;
+    if (pin.group === 'sam' && !answers.sam) continue;
     const section = pin.section === 'dependencies' ? dependencies : devDependencies;
     section[pin.name] = pin.spec;
   }

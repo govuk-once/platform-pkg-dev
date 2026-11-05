@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { TOOL_NAMES, toolVersion } from '../versions.js';
 import { resolvePreCommit } from './pre-commit-bin.js';
+import { resolveSam } from './sam-cli-bin.js';
 import { which } from './which.js';
 
 export interface ToolSpec {
@@ -15,11 +16,18 @@ export interface ToolSpec {
 
 const WHY: Readonly<Record<string, string>> = {
   'pre-commit': 'runs the git hook chain, and installs every hook in it',
+  'aws-sam-cli': 'runs Lambda functions locally with SAM',
 };
 
 const INSTALL: Readonly<Record<string, (version: string) => string>> = {
   'pre-commit': (v) =>
     `dev hooks install   (or: python3 -m pip install --target=node_modules/.pip/pre-commit pre-commit==${v})`,
+  'aws-sam-cli': (v) =>
+    `dev hooks install   (or: python3 -m pip install --target=node_modules/.pip/aws-sam-cli aws-sam-cli==${v})`,
+};
+
+const BIN_NAME: Readonly<Record<string, string>> = {
+  'aws-sam-cli': 'sam',
 };
 
 /** Every external executable platform-pkg-dev pins, built from versions.json. */
@@ -54,9 +62,11 @@ export type ToolStatus =
 
 /** Runs `<bin> --version` and compares against the pin. */
 export function inspectTool(spec: ToolSpec, cwd?: string): ToolStatus {
+  const resolvedBin = BIN_NAME[spec.bin] ?? spec.bin;
   const path =
     (spec.bin === 'pre-commit' && cwd !== undefined ? resolvePreCommit(cwd) : undefined) ??
-    which(spec.bin);
+    (spec.bin === 'aws-sam-cli' && cwd !== undefined ? resolveSam(cwd) : undefined) ??
+    which(resolvedBin);
   if (path === undefined) return { state: 'missing', spec };
 
   const result = spawnSync(path, ['--version'], { encoding: 'utf8' });

@@ -1,11 +1,11 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile as readFileAsync, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { bold, fail, info, ok, step, warn } from '../lib/log.js';
+import { bold, dim, fail, info, ok, step, warn } from '../lib/log.js';
 import { binPath } from '../lib/toolchain.js';
-import { renderTemplateDir } from '../lib/render.js';
+import { renderTemplateDir, substitute, TEMPLATES_ROOT } from '../lib/render.js';
 import type { RunContext } from './run.js';
 
 export const CDK_USAGE = `${bold('dev cdk:init')} - scaffold the CDK app for this package
@@ -15,6 +15,8 @@ Usage
 
 Options
   --dir <name>  Directory to create, relative to the package (default: cdk)
+  --sam              Include SAM local dev (API GW + Lambda example)
+  --sam-example <t>  Example stack: dynamo (default) or queue
   --force       Replace an existing CDK directory
   --cwd <path>  Run against this package instead of the current directory
   --help        Show this message
@@ -55,6 +57,8 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
     args: [...argv],
     options: {
       dir: { type: 'string' },
+      sam: { type: 'boolean' },
+      'sam-example': { type: 'string' },
       force: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
@@ -99,20 +103,61 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
 
   // Layered on top of cdk init's output, deliberately: the structure and the
   // feature flags are its job, the stack and the compiler settings are ours.
-  const written = await renderTemplateDir(
-    'cdk',
-    target,
-    { packageName: packageName(context.cwd), stackId: stackId(context.cwd) },
-    { force: true },
-  );
-  for (const file of written.written.toSorted()) ok(join(name, file));
+  const samExamples = (values['sam-example'] ?? 'dynamo').split(',') as ('dynamo' | 'queue')[];
+  const vars = { packageName: packageName(context.cwd), stackId: stackId(context.cwd) };
+
+  if (values.sam !== true) {
+    const written = await renderTemplateDir('cdk', target, vars, { force: true });
+    for (const file of written.written.toSorted()) ok(join(name, file));
+  } else {
+    // tsconfig is the same across all SAM templates — take it from the first
+    const written = await renderTemplateDir(`cdk-sam-${samExamples[0]}`, target, vars, {
+      force: true,
+      skip: samExamples.length > 1 ? ['lib/main.stack.ts'] : [],
+    });
+    for (const file of written.written.toSorted()) ok(join(name, file));
+
+    // Render each example's stack and handlers
+    for (const ex of samExamples) {
+      const stackSrc = join(TEMPLATES_ROOT, `cdk-sam-${ex}`, 'lib', 'main.stack.ts');
+      const stackName = samExamples.length === 1 ? 'main.stack.ts' : `${ex}.stack.ts`;
+      const stackDest = join(target, 'lib', stackName);
+      const content = substitute(await readFileAsync(stackSrc, 'utf8'), vars);
+      await mkdir(join(target, 'lib'), { recursive: true });
+      await writeFile(stackDest, content, 'utf8');
+      ok(join(name, 'lib', stackName));
+
+      const handlerWritten = await renderTemplateDir(
+        `sam-handlers/${ex}`,
+        join(context.cwd, 'src'),
+        vars,
+        { force: false },
+      );
+      for (const file of handlerWritten.written.toSorted()) ok(join('src', file));
+      for (const file of handlerWritten.skipped) info(dim(`  skipped src/${file} (exists)`));
+    }
+
+    // When multiple examples, rewrite app.ts to import all stacks
+    if (samExamples.length > 1) {
+      const sid = stackId(context.cwd);
+      await writeFile(join(target, 'bin', 'app.ts'), buildMultiStackApp(samExamples, sid), 'utf8');
+    }
+  }
 
   await pointAppAtTypeStripping(target);
   ok(`${join(name, 'cdk.json')} app -> node bin/app.ts`);
 
   info('');
   info(bold('Next steps'));
-  info(`  cd ${name} && pnpm exec cdk synth`);
+  if (values.sam === true) {
+    info(`  Ensure esbuild and @esbuild/linux-x64 are devDependencies:`);
+    info(`  ${dim('pnpm add -D esbuild @esbuild/linux-x64')}`);
+    info('');
+    info(`  Start the local API:`);
+    info(`  ${dim('dev sam:start')}`);
+  } else {
+    info(`  cd ${name} && pnpm exec cdk synth`);
+  }
 
   return 0;
 }
@@ -153,7 +198,7 @@ async function pruneAndReport(target: string): Promise<number> {
     if (stale !== 'main.stack.ts') await rm(join(target, 'lib', stale), { force: true });
   }
 
-  const config = JSON.parse(await readFile(join(target, 'cdk.json'), 'utf8')) as {
+  const config = JSON.parse(await readFileAsync(join(target, 'cdk.json'), 'utf8')) as {
     context?: Record<string, unknown>;
   };
   return Object.keys(config.context ?? {}).length;
@@ -168,7 +213,7 @@ async function pruneAndReport(target: string): Promise<number> {
  */
 async function pointAppAtTypeStripping(target: string): Promise<void> {
   const path = join(target, 'cdk.json');
-  const config = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
+  const config = JSON.parse(await readFileAsync(path, 'utf8')) as Record<string, unknown>;
 
   config['app'] = 'node bin/app.ts';
 
@@ -196,4 +241,43 @@ function stackId(cwd: string): string {
     .join('');
 
   return `${pascal === '' ? 'Main' : pascal}MainStack`;
+}
+
+const STACK_CLASS: Record<string, string> = {
+  dynamo: 'DynamoStack',
+  queue: 'QueueStack',
+};
+
+function buildMultiStackApp(examples: readonly string[], baseStackId: string): string {
+  const imports = examples
+    .map((ex) => {
+      const cls = STACK_CLASS[ex] ?? 'MainStack';
+      return `import { MainStack as ${cls} } from '../lib/${ex}.stack.ts';`;
+    })
+    .join('\n');
+
+  const stacks = examples
+    .map((ex) => {
+      const cls = STACK_CLASS[ex] ?? 'MainStack';
+      const suffix = ex.charAt(0).toUpperCase() + ex.slice(1);
+      return `new ${cls}(app, '${baseStackId.replace(/Stack$/, '')}${suffix}Stack', {\n  env: { ...(account === undefined ? {} : { account }), region },\n});`;
+    })
+    .join('\n\n');
+
+  return `#!/usr/bin/env node
+import { App, Aspects } from 'aws-cdk-lib';
+${imports}
+
+const app = new App();
+
+const account = process.env['CDK_DEFAULT_ACCOUNT'];
+const region = process.env['CDK_DEFAULT_REGION'] ?? 'eu-west-2';
+
+${stacks}
+
+if (process.env['SAM_LOCAL'] === 'true') {
+  const { SAMLocalAspect } = await import('@govuk-connect/dev/sam');
+  Aspects.of(app).add(new SAMLocalAspect(app));
+}
+`;
 }

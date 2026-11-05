@@ -9,16 +9,24 @@ import {
   ResourceInUseException,
   ListTablesCommand,
 } from '@aws-sdk/client-dynamodb';
+import { SQSClient, CreateQueueCommand, QueueNameExists } from '@aws-sdk/client-sqs';
 
-import type { LocalResourceTable } from './types.ts';
+import type { LocalResourceTable } from './types.js';
 
 const LOCALSTACK_ENDPOINT = process.env['LOCALSTACK_ENDPOINT'] ?? 'http://localhost:4566';
 const REGION = 'eu-west-2';
+const LOCAL_CREDS = { accessKeyId: 'local', secretAccessKey: 'local' }; // pragma: allowlist secret
 
 const ddb = new DynamoDBClient({
   endpoint: LOCALSTACK_ENDPOINT,
   region: REGION,
-  credentials: { accessKeyId: 'local', secretAccessKey: 'local' }, // pragma: allowlist secret
+  credentials: LOCAL_CREDS,
+});
+
+const sqs = new SQSClient({
+  endpoint: LOCALSTACK_ENDPOINT,
+  region: REGION,
+  credentials: LOCAL_CREDS,
 });
 
 async function waitFor(
@@ -63,25 +71,51 @@ async function createTable(table: LocalResourceTable) {
   }
 }
 
+interface LocalResourceQueue {
+  type: 'sqs-queue';
+  localName: string;
+}
+
+async function createQueue(queue: LocalResourceQueue) {
+  try {
+    await sqs.send(new CreateQueueCommand({ QueueName: queue.localName }));
+    console.log(`  created queue ${queue.localName}`);
+  } catch (err) {
+    if (err instanceof QueueNameExists) {
+      console.log(`  queue ${queue.localName} already exists`);
+      return;
+    }
+    throw err;
+  }
+}
+
 async function main() {
-  const samDir = path.dirname(fileURLToPath(import.meta.url));
-  const manifestPath = path.join(samDir, '.aws-sam', 'local-resources.json');
+  const samOutDir =
+    process.env['SAM_OUT_DIR'] ??
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '.aws-sam');
+  const manifestPath = path.join(samOutDir, 'local-resources.json');
   if (!fs.existsSync(manifestPath)) {
-    console.log('No local-resources.json found — run sam:synth first.');
+    console.log('No local-resources.json found — run dev sam:synth first.');
     return;
   }
 
-  console.log('Waiting for LocalStack...');
-  await waitFor('DynamoDB', () => ddb.send(new ListTablesCommand()));
-
   const lines = fs.readFileSync(manifestPath, 'utf-8').split(/\r?\n/).filter(Boolean);
+  const resources = lines.map((line) => JSON.parse(line) as { type: string });
 
-  console.log('Provisioning DynamoDB tables...');
-  for (const line of lines) {
-    const resource = JSON.parse(line) as LocalResourceTable;
-    if (resource.type === 'table') {
-      await createTable(resource);
-    }
+  const tables = resources.filter((r): r is LocalResourceTable => r.type === 'table');
+  const queues = resources.filter((r): r is LocalResourceQueue => r.type === 'sqs-queue');
+
+  console.log('Waiting for LocalStack...');
+  await waitFor('LocalStack', () => ddb.send(new ListTablesCommand()));
+
+  if (tables.length > 0) {
+    console.log('Provisioning DynamoDB tables...');
+    for (const table of tables) await createTable(table);
+  }
+
+  if (queues.length > 0) {
+    console.log('Provisioning SQS queues...');
+    for (const queue of queues) await createQueue(queue);
   }
 
   console.log('Done');

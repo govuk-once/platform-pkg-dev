@@ -14,7 +14,7 @@ export type PinSection = 'dependencies' | 'devDependencies';
  * has opted into CDK - `init` adds them when asked, and `sync` then keeps them
  * current without ever forcing CDK onto a package that does not use it.
  */
-export type PinGroup = 'core' | 'cdk';
+export type PinGroup = 'core' | 'cdk' | 'sam';
 
 /**
  * Where a pin belongs.
@@ -110,6 +110,20 @@ export const MANAGED_PINS: readonly ManagedPin[] = [
     group: 'cdk',
     scope: 'any',
   },
+  {
+    name: 'esbuild',
+    spec: versionOf('esbuild'),
+    section: 'devDependencies',
+    group: 'sam',
+    scope: 'any',
+  },
+  {
+    name: '@esbuild/linux-x64',
+    spec: versionOf('@esbuild/linux-x64'),
+    section: 'devDependencies',
+    group: 'sam',
+    scope: 'any',
+  },
 ];
 
 /** Top-level manifest fields platform-pkg-dev also owns. */
@@ -147,20 +161,27 @@ const OTHER: Record<PinSection, PinSection> = {
   devDependencies: 'dependencies',
 };
 
-/** Pins that apply to a manifest: core always, cdk only once the package uses it. */
+/** Pins that apply to a manifest: core always, cdk/sam only once the package uses them. */
 export function applicablePins(
   manifest: Manifest,
   options: { isMember?: boolean } = {},
 ): readonly ManagedPin[] {
-  const usesCdk = MANAGED_PINS.filter((pin) => pin.group === 'cdk').some(
-    (pin) =>
-      manifest.dependencies?.[pin.name] !== undefined ||
-      manifest.devDependencies?.[pin.name] !== undefined,
-  );
+  const hasDep = (group: PinGroup) =>
+    MANAGED_PINS.filter((pin) => pin.group === group).some(
+      (pin) =>
+        manifest.dependencies?.[pin.name] !== undefined ||
+        manifest.devDependencies?.[pin.name] !== undefined,
+    );
+
+  const usesCdk = hasDep('cdk');
+  const usesSam = hasDep('sam');
 
   return MANAGED_PINS.filter(
     (pin) =>
-      (pin.group === 'core' || usesCdk) && !(options.isMember === true && pin.scope === 'root'),
+      (pin.group === 'core' ||
+        (pin.group === 'cdk' && usesCdk) ||
+        (pin.group === 'sam' && usesSam)) &&
+      !(options.isMember === true && pin.scope === 'root'),
   );
 }
 

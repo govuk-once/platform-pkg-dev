@@ -51,6 +51,44 @@ export async function ask(
   }
 }
 
+/** Asks the user to pick one or more options from a numbered list. Accepts `1`, `1,2`, `1 & 2`, or `all`. */
+export async function choose<T extends string>(
+  question: string,
+  options: { choices: readonly { label: string; value: T }[]; flag: string },
+): Promise<T[]> {
+  if (!stdin.isTTY) requireInteractive(question, options.flag);
+
+  const n = options.choices.length;
+  stdout.write(`${bold('?')} ${question}\n`);
+  for (let i = 0; i < n; i++) {
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    const choice = options.choices[i]!;
+    stdout.write(`  ${bold(String(i + 1))} ${choice.label}\n`);
+  }
+
+  stdout.write(`  ${dim(`Enter 1-${n}, e.g. 1, 1 & 2, or all`)}\n`);
+
+  for (;;) {
+    const raw = (await readline().question(`${dim('  Choice:')} `)).trim().toLowerCase();
+
+    if (raw === 'all') {
+      return options.choices.map((c) => c.value);
+    }
+
+    const nums = raw
+      .split(/[\s,&]+/)
+      .map(Number)
+      .filter((v) => Number.isInteger(v) && v >= 1 && v <= n);
+
+    if (nums.length > 0) {
+      // oxlint-disable-next-line typescript/no-non-null-assertion
+      return [...new Set(nums)].map((i) => options.choices[i - 1]!.value);
+    }
+
+    stdout.write(`  ${dim(`Enter 1-${n}, e.g. 1, 1 & 2, or all.`)}\n`);
+  }
+}
+
 /** Asks a yes/no question. */
 export async function confirm(
   question: string,

@@ -11,8 +11,7 @@ services:
     ports:
       - 4566:4566
     environment:
-      SERVICES: dynamodb,s3,kms
-      DEFAULT_REGION: eu-west-2
+      SERVICES: dynamodb,sqs,s3,kms
     healthcheck:
       test: ['CMD-SHELL', 'curl -sf http://localhost:4566/_localstack/health | grep -q running']
       interval: 5s

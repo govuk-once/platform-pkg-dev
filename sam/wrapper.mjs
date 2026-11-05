@@ -28,7 +28,7 @@ function loadHandler(targetRelPath) {
     entryPoints: [absPath],
     bundle: true,
     platform: 'node',
-    target: 'node20',
+    target: 'node24',
     format: 'cjs',
     external: ['@aws-sdk/*', 'aws-sdk'],
     write: false,

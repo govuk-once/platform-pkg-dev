@@ -21,7 +21,7 @@ set -eu
 # and platform-pkg-dev's test suite checks them against versions.json.
 NODE_MAJOR=${NODE_MAJOR:-24}
 PNPM=${PNPM:-pnpm@12.4.1}
-PKG_DEV=${PKG_DEV:-0.0.11}
+PKG_DEV=${PKG_DEV:-0.0.12}
 
 fail() { echo "platform-pkg-dev: $1" >&2; exit 1; }
 
@@ -176,6 +176,7 @@ packages:
 allowBuilds:
   "@govuk-connect/dev": true
   "@govuk-connect/dev@${PKG_DEV}": true
+  esbuild: true
 YAML
 fi
 
