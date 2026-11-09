@@ -24,6 +24,7 @@ import {
   runCodeArtifactAuthorise,
 } from './commands/gds.js';
 import { SCAN_USAGE, runScan } from './commands/scan.js';
+import { SAM_USAGE, runSamStart, runSamStop, runSamSynth } from './commands/sam.js';
 import { inspectEnvironment, reportPreflight } from './lib/preflight.js';
 import { bold, dim, error, fail, info } from './lib/log.js';
 import { resolveWorkingDir } from './lib/project.js';
@@ -48,6 +49,9 @@ Commands
   cdk:init     Scaffold the CDK app: cdk init, then platform-pkg-dev's stack on top
   synth        Assume the GDS role, then synthesise the CDK app
   scan         Synthesise, then run checkov over the templates
+  sam:synth    Synthesise the CDK app with SAM_LOCAL=true
+  sam:start    Start LocalStack + SAM local API
+  sam:stop     Tear down LocalStack and clean up Lambda containers
   assumeRole   Assume a GDS role and print credentials
   codeArtifactAuthorise
                Assume a role and authorise npm against CodeArtifact
@@ -131,6 +135,9 @@ async function main(argv: readonly string[]): Promise<number> {
     case 'doctor':
     case 'cdk:init':
     case 'synth':
+    case 'sam:synth':
+    case 'sam:start':
+    case 'sam:stop':
     case 'scan':
     case 'spell':
     case 'write-markers': {
@@ -142,6 +149,9 @@ async function main(argv: readonly string[]): Promise<number> {
       if (command === 'codeArtifactAuthorise')
         return await runCodeArtifactAuthorise(toolArgs, context);
       if (command === 'synth') return await runSynth(toolArgs, context);
+      if (command === 'sam:synth') return await runSamSynth(toolArgs, context);
+      if (command === 'sam:start') return await runSamStart(toolArgs, context);
+      if (command === 'sam:stop') return await runSamStop(toolArgs, context);
       if (command === 'scan') return await runScan(toolArgs, context);
 
       if (command === 'build') return await runBuild(toolArgs, context);
@@ -177,6 +187,14 @@ async function main(argv: readonly string[]): Promise<number> {
       else if (topic === 'cdk:init' || topic === 'cdk') info(CDK_USAGE);
       else if (topic === 'synth') info(SYNTH_USAGE);
       else if (topic === 'scan') info(SCAN_USAGE);
+      else if (
+        topic === 'sam' ||
+        topic === 'sam:init' ||
+        topic === 'sam:start' ||
+        topic === 'sam:stop' ||
+        topic === 'sam:synth'
+      )
+        info(SAM_USAGE);
       else if (topic === 'assumeRole') info(ASSUME_ROLE_USAGE);
       else if (topic === 'codeArtifactAuthorise') info(CODE_ARTIFACT_USAGE);
       else info(USAGE);

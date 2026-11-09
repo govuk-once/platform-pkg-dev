@@ -1,6 +1,6 @@
 {
   "name": "@govuk-connect/dev",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
   "bin": {
@@ -10,6 +10,7 @@
     "dist",
     "templates",
     "hooks",
+    "sam",
     "tsconfig.base.json",
     "oxlint.base.json",
     "versions.json",
@@ -30,13 +31,17 @@
     "./vitest": {
       "types": "./dist/vitest.d.ts",
       "import": "./dist/vitest.js"
+    },
+    "./sam": {
+      "types": "./dist/sam/index.d.ts",
+      "import": "./dist/sam/index.js"
     }
   },
   "publishConfig": {
     "registry": "https://registry-prod-904690835784.d.codeartifact.eu-west-2.amazonaws.com/npm/registry-prod-repo"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.src.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';const v=JSON.parse(readFileSync('package.json','utf8')).version+'\\n';try{if(readFileSync('VERSION','utf8')===v)process.exit(0)}catch{};writeFileSync('VERSION',v)\"",
+    "build": "tsc -p tsconfig.src.json && tsc -p tsconfig.sam.json && chmod +x dist/cli.js && node --input-type=module -e \"import{readFileSync,writeFileSync}from'node:fs';const v=JSON.parse(readFileSync('package.json','utf8')).version+'\\n';try{if(readFileSync('VERSION','utf8')===v)process.exit(0)}catch{};writeFileSync('VERSION',v)\"",
     "build:watch": "tsc -p tsconfig.src.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.src.json --noEmit",
     "test": "vitest run",
@@ -57,17 +62,25 @@
     "sam:clean": "docker ps -a --format '{{.ID}} {{.Image}}' | grep 'public.ecr.aws/lambda' | awk '{print $1}' | xargs -r docker rm -f"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1161.0",
+    "@aws-sdk/client-kms": "3.1161.0",
+    "@aws-sdk/client-sqs": "3.1161.0",
+    "@aws-sdk/lib-dynamodb": "3.1161.0",
+    "@esbuild/linux-x64": "0.28.2",
     "aws-cdk-lib": "2.265.0",
     "constructs": "10.8.1",
     "cspell": "10.3.0",
+    "esbuild": "0.28.2",
     "oxfmt": "0.63.0",
     "oxlint": "1.78.0",
+    "pg": "8.23.1",
     "typescript": "7.0.2",
     "vitest": "4.1.10",
     "yaml": "2.9.0"
   },
   "devDependencies": {
     "@types/node": "24.13.3",
+    "@types/pg": "8.23.1",
     "aws-cdk": "2.1136.0",
     "oxlint-tsgolint": "7.0.2001"
   },

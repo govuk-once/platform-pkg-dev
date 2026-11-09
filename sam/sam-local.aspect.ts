@@ -8,10 +8,14 @@ import { type IAspect, type App, AssetHashType, DockerImage, Stack } from 'aws-c
 import { Code, Function as LambdaFunction, type CfnFunction } from 'aws-cdk-lib/aws-lambda';
 import type { Asset } from 'aws-cdk-lib/aws-s3-assets';
 import { type CfnTable, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { type CfnQueue, Queue } from 'aws-cdk-lib/aws-sqs';
+import { type CfnKey, Key } from 'aws-cdk-lib/aws-kms';
 
-import type { LocalResourceTable, SharedAssetCachedS3, LocalResourceSharedEnv } from './types.ts';
+import type { LocalResourceTable, SharedAssetCachedS3, LocalResourceSharedEnv } from './types.js';
 
 const WRAPPER_SCOPE_ID = 'SAMWrapperCode';
+const __compiledDir = path.dirname(fileURLToPath(import.meta.url));
+const __samDir = path.resolve(__compiledDir, '../../sam');
 
 const ASSET_EXCLUDES = [
   '.git',
@@ -33,20 +37,28 @@ const ASSET_EXCLUDES = [
 
 export class SAMLocalAspect implements IAspect {
   private sharedEnv: LocalResourceSharedEnv;
-  private sharedCode: Code;
+  private sharedCode!: Code;
   private manifestOut: string;
   private sharedAssetCachedS3?: SharedAssetCachedS3;
   private assetPath?: string;
   private collectedTables: LocalResourceTable[] = [];
+  private collectedQueues: Map<string, string> = new Map();
+  private collectedDsqlSchemas: { type: 'dsql-table'; localName: string; schemaSql: string }[] = [];
+  private collectedKeys: { type: 'kms-key'; localName: string }[] = [];
+  private repoRoot: string;
+  private wrapperHandler: string;
 
-  constructor(app: App, props: { sharedEnv?: LocalResourceSharedEnv } = {}) {
+  constructor(app: App, props: { sharedEnv?: LocalResourceSharedEnv; repoRoot?: string } = {}) {
     this.sharedEnv = props.sharedEnv ?? {};
+    this.repoRoot = props.repoRoot ?? process.env['SAM_REPO_ROOT'] ?? process.cwd();
     this.manifestOut = path.join(app.assetOutdir, 'local-resources.json');
+    this.wrapperHandler = this.ensureShortWrapperPath();
     this.createSharedCode();
 
     app.node.addValidation({
       validate: () => {
         this.writeManifest();
+        this.rewriteQueueUrls(app);
         return [];
       },
     });
@@ -62,18 +74,48 @@ export class SAMLocalAspect implements IAspect {
     if (node instanceof Table) {
       this.collectTable(node);
     }
+
+    if (node instanceof Key) {
+      const cfn = node.node.defaultChild as CfnKey;
+      this.collectedKeys.push({ type: 'kms-key', localName: Stack.of(cfn).getLogicalId(cfn) });
+    }
+
+    if (node instanceof Queue) {
+      this.collectQueue(node);
+    }
+  }
+
+  private ensureShortWrapperPath(): string {
+    const wrapperSrc = path.join(__samDir, 'wrapper.mjs');
+    const shortDir = path.join(this.repoRoot, '.sam');
+    const shortPath = path.join(shortDir, 'wrapper.mjs');
+
+    fs.mkdirSync(shortDir, { recursive: true });
+    fs.copyFileSync(wrapperSrc, shortPath);
+
+    return '.sam/wrapper.handler';
   }
 
   private writeManifest(): void {
-    if (this.collectedTables.length === 0) return;
-    const lines = this.collectedTables.map((t) => JSON.stringify(t));
+    const resources: unknown[] = [
+      ...this.collectedTables,
+      ...this.collectedDsqlSchemas,
+      ...this.collectedKeys,
+      ...[...this.collectedQueues.entries()].map(([, url]) => ({
+        type: 'sqs-queue' as const,
+        // oxlint-disable-next-line typescript/no-non-null-assertion
+        localName: url.split('/').pop()!,
+      })),
+    ];
+    if (resources.length === 0) return;
+    const lines = resources.map((r) => JSON.stringify(r));
     fs.writeFileSync(this.manifestOut, lines.join('\n'));
   }
 
   private createSharedCode() {
     if (!this.sharedCode) {
-      const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-      this.sharedCode = Code.fromAsset(repoRoot, {
+      const root = this.repoRoot;
+      this.sharedCode = Code.fromAsset(root, {
         exclude: ASSET_EXCLUDES,
         assetHash: 'sam-local-dev-v1',
         assetHashType: AssetHashType.CUSTOM,
@@ -82,7 +124,7 @@ export class SAMLocalAspect implements IAspect {
           local: {
             tryBundle(outputDir: string): boolean {
               fs.rmSync(outputDir, { recursive: true, force: true });
-              fs.symlinkSync(repoRoot, outputDir, 'dir');
+              fs.symlinkSync(root, outputDir, 'dir');
               return true;
             },
           },
@@ -108,16 +150,31 @@ export class SAMLocalAspect implements IAspect {
       | { enabled?: boolean; attributeName?: string }
       | undefined;
     const localName = stack.getLogicalId(cfn);
+    const ttlAttribute = ttlSpec?.enabled ? ttlSpec.attributeName : undefined;
     const table: LocalResourceTable = {
       type: 'table',
       localName,
       keySchema,
       attributeDefinitions,
-      ttlAttribute: ttlSpec?.enabled ? ttlSpec.attributeName : undefined,
+      ...(ttlAttribute !== undefined ? { ttlAttribute } : {}),
     };
 
     this.collectedTables.push(table);
     cfn.addPropertyOverride('TableName', localName);
+  }
+
+  private rewriteQueueUrls(_app: App): void {
+    // Queue URL rewriting is handled post-synth in the template merge step,
+    // because CDK tokens are opaque during synthesis and SAM resolves
+    // {Ref: QueueLogicalId} to just the logical ID (not a URL).
+  }
+
+  private collectQueue(node: Queue) {
+    const cfn = node.node.defaultChild as CfnQueue;
+    const stack = Stack.of(cfn);
+    const localName = stack.getLogicalId(cfn);
+    cfn.addPropertyOverride('QueueName', localName);
+    this.collectedQueues.set(node.queueUrl, `http://localstack:4566/000000000000/${localName}`);
   }
 
   private wrapLambda(node: LambdaFunction) {
@@ -132,16 +189,31 @@ export class SAMLocalAspect implements IAspect {
       ...this.sharedEnv,
       TARGET_HANDLER: samSourceEntry as string,
       AWS_ENDPOINT_URL_DYNAMODB: 'http://localstack:4566',
+      AWS_ENDPOINT_URL_SQS: 'http://localstack:4566',
       AWS_ENDPOINT_URL_S3: 'http://localstack:4566',
       AWS_ENDPOINT_URL_KMS: 'http://localstack:4566',
+      DSQL_LOCAL_ENDPOINT: 'sam-dsql-emulator',
     };
 
-    cfn.addPropertyOverride('Handler', 'sam/wrapper.handler');
+    const schemaSql = node.node.metadata.find((m) => m.type === 'sam:dsql-schema')?.data;
+    if (typeof schemaSql === 'string') {
+      this.collectedDsqlSchemas.push({
+        type: 'dsql-table',
+        localName: Stack.of(node).getLogicalId(cfn),
+        schemaSql,
+      });
+    }
+
+    cfn.addPropertyOverride('Handler', this.wrapperHandler);
+    // The first request bundles the handler, which alone can outlast the 3s default.
+    cfn.addPropertyOverride('Timeout', Math.max(cfn.timeout ?? 3, 30));
     cfn.addPropertyOverride('Code', {
       S3Bucket: s3.bucketName,
       S3Key: s3.objectKey,
     });
-    cfn.addPropertyOverride('Environment.Variables', env);
+    for (const [key, value] of Object.entries(env)) {
+      cfn.addPropertyOverride(`Environment.Variables.${key}`, value);
+    }
     cfn.cfnOptions.metadata = {
       ...cfn.cfnOptions.metadata,
       'aws:asset:path': assetPath,

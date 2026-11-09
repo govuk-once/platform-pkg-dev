@@ -11,7 +11,8 @@ import {
 } from '../lib/package-json.js';
 import { CODE_ARTIFACT_ACCOUNT } from '../versions.js';
 import { bold, dim, fail, info, ok, step, warn } from '../lib/log.js';
-import { ask, closePrompts, confirm } from '../lib/prompt.js';
+import { ask, choose, closePrompts, confirm } from '../lib/prompt.js';
+import { SAM_EXAMPLES, type SamExample } from '../lib/functions-package.js';
 import { inspectEnvironment, reportPreflight } from '../lib/preflight.js';
 import {
   isSeedFile,
@@ -44,6 +45,9 @@ Options
                      Use file:../platform-pkg-dev while platform-pkg-dev is unpublished.
   --cdk              Add the AWS CDK dependency set
   --no-cdk           Skip CDK
+  --sam              Add SAM local dev (requires CDK)
+  --no-sam           Skip SAM
+  --sam-example <t>  Example stacks, comma-separated: dsql, dynamo (default), queue
   --package          Publishable library (adds dual ESM/CJS tsconfigs)
   --no-package       Application, not a published library
   --workspace        Workspace root (adds pnpm-workspace.yaml + packages/)
@@ -75,6 +79,9 @@ export async function runInit(argv: readonly string[]): Promise<void> {
       'pkg-dev': { type: 'string' },
       cdk: { type: 'boolean' },
       'no-cdk': { type: 'boolean' },
+      sam: { type: 'boolean' },
+      'no-sam': { type: 'boolean' },
+      'sam-example': { type: 'string' },
       package: { type: 'boolean' },
       'no-package': { type: 'boolean' },
       workspace: { type: 'boolean' },
@@ -148,6 +155,9 @@ type InitFlags = {
   role?: string | undefined;
   cdk?: boolean | undefined;
   'no-cdk'?: boolean | undefined;
+  sam?: boolean | undefined;
+  'no-sam'?: boolean | undefined;
+  'sam-example'?: string | undefined;
   package?: boolean | undefined;
   'no-package'?: boolean | undefined;
   workspace?: boolean | undefined;
@@ -203,6 +213,41 @@ async function collectAnswers(
     flagPair(flags.cdk, flags['no-cdk'], 'cdk') ??
     (acceptDefaults ? false : await confirm('Add CDK?', { defaultValue: true, flag: '--cdk' }));
 
+  let sam = false;
+  let samExamples: SamExample[] | undefined;
+
+  if (cdk) {
+    sam =
+      flagPair(flags.sam, flags['no-sam'], 'sam') ??
+      (acceptDefaults
+        ? false
+        : await confirm('Add SAM local dev?', { defaultValue: true, flag: '--sam' }));
+
+    if (sam) {
+      const exFlag = flags['sam-example'];
+      if (exFlag !== undefined) {
+        const parsed = exFlag.split(',').map((s) => s.trim());
+        for (const v of parsed) {
+          if (!SAM_EXAMPLES.includes(v as SamExample)) {
+            fail(`Unknown --sam-example "${v}".`, `Choose from: ${SAM_EXAMPLES.join(', ')}.`);
+          }
+        }
+        samExamples = parsed as SamExample[];
+      } else if (!acceptDefaults) {
+        samExamples = await choose('Example stacks:', {
+          flag: '--sam-example',
+          choices: [
+            { label: 'API GW → Lambda → DSQL', value: 'dsql' as const },
+            { label: 'API GW → Lambda → DynamoDB', value: 'dynamo' as const },
+            { label: 'API GW → Lambda → SQS → Lambda', value: 'queue' as const },
+          ],
+        });
+      } else {
+        samExamples = ['dynamo'];
+      }
+    }
+  }
+
   const isPackage =
     flagPair(flags.package, flags['no-package'], 'package') ??
     (acceptDefaults
@@ -223,7 +268,17 @@ async function collectAnswers(
           flag: '--workspace',
         }));
 
-  return { packageName, team, role, cdk, isPackage, isWorkspace, isMember };
+  return {
+    packageName,
+    team,
+    role,
+    cdk,
+    sam,
+    ...(samExamples !== undefined ? { samExamples } : {}),
+    isPackage,
+    isWorkspace,
+    isMember,
+  };
 }
 
 /**
@@ -433,8 +488,14 @@ async function scaffold(
   }
 
   if (options.install && answers.cdk) {
+    const cdkArgs: string[] = [];
+    if (answers.sam) {
+      cdkArgs.push('--sam');
+      if (answers.samExamples !== undefined)
+        cdkArgs.push('--sam-example', answers.samExamples.join(','));
+    }
     info('');
-    await runCdkInit([], { cwd: targetDir });
+    await runCdkInit(cdkArgs, { cwd: targetDir });
   }
 
   info('');
@@ -538,8 +599,14 @@ async function scaffoldDetached(
   }
 
   if (options.install && answers.cdk) {
+    const cdkArgs: string[] = [];
+    if (answers.sam) {
+      cdkArgs.push('--sam');
+      if (answers.samExamples !== undefined)
+        cdkArgs.push('--sam-example', answers.samExamples.join(','));
+    }
     info('');
-    await runCdkInit([], { cwd: targetDir });
+    await runCdkInit(cdkArgs, { cwd: targetDir });
   }
 
   info('');

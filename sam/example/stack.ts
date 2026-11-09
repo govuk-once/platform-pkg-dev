@@ -14,7 +14,7 @@ export class SAMExampleStack extends Stack {
     });
 
     const fn = new Function(this, 'ItemsFunction', {
-      runtime: Runtime.NODEJS_20_X,
+      runtime: Runtime.NODEJS_24_X,
       handler: 'handler.handler',
       code: Code.fromInline('exports.handler = async () => ({})'),
       environment: {

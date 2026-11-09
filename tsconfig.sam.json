@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "sam",
+    "outDir": "dist/sam",
+    "declaration": true,
+    "types": ["node"]
+  },
+  "include": [
+    "sam/index.ts",
+    "sam/sam-local.aspect.ts",
+    "sam/types.ts",
+    "sam/init-local-resources.ts"
+  ],
+  "exclude": ["**/*.test.ts"]
+}

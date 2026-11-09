@@ -23,6 +23,7 @@ interface VersionsFile {
   readonly codeArtifactAccount: number;
   readonly versions: Readonly<Record<string, string>>;
   readonly tools: Readonly<Record<string, string>>;
+  readonly functions?: Readonly<Record<string, string>>;
   readonly hookRevs: Readonly<Record<string, string>>;
   readonly versionUrl: string | null;
   readonly workspaceSettings: Readonly<Record<string, unknown>>;
@@ -137,6 +138,15 @@ export function toolVersion(tool: string): string {
   const version = FILE.tools[tool];
   if (version === undefined) {
     throw new Error(`platform-pkg-dev versions.json has no tools entry for "${tool}".`);
+  }
+  return version;
+}
+
+/** Looks up a pinned Lambda runtime library for src/package.json, failing loudly on a missing entry. */
+export function functionVersion(name: string): string {
+  const version = FILE.functions?.[name];
+  if (version === undefined) {
+    throw new Error(`platform-pkg-dev versions.json has no functions entry for "${name}".`);
   }
   return version;
 }

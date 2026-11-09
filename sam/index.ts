@@ -1,1 +1,1 @@
-export { SAMLocalAspect } from './sam-local.aspect';
+export { SAMLocalAspect } from './sam-local.aspect.js';

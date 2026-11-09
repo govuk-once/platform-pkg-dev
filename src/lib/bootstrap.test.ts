@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { NODE_MAJOR, PACKAGE_MANAGER } from '../versions.js';
+import { parse } from 'yaml';
+import { NODE_MAJOR, PACKAGE_MANAGER, WORKSPACE_SETTINGS } from '../versions.js';
 import { isNewer } from './semver.js';
 
 /**
@@ -72,5 +73,17 @@ describe('VERSION', () => {
     // one would either miss upgrades or loop trying to apply the same version.
     const file = readFileSync(new URL('../../VERSION', import.meta.url), 'utf8').trim();
     expect(file).toBe(own.version);
+  });
+
+  it('applies the release-age policy from the very first install', () => {
+    // pnpm checks the lockfile against the policy on every install, so anything
+    // the bootstrap install resolved without it would fail the next install.
+    const yaml = /cat > pnpm-workspace\.yaml <<YAML\n([\s\S]*?)\nYAML/.exec(script)?.[1];
+    const bootstrap = parse(yaml ?? '') as Record<string, unknown>;
+
+    expect(bootstrap['minimumReleaseAge']).toBe(WORKSPACE_SETTINGS['minimumReleaseAge']);
+    expect(bootstrap['minimumReleaseAgeExclude']).toEqual(
+      WORKSPACE_SETTINGS['minimumReleaseAgeExclude'],
+    );
   });
 });

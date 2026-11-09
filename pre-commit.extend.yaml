@@ -1,0 +1,8 @@
+# Package-only overrides, merged into platform-pkg-dev's master config by `dev sync`.
+# See pre-commit.extend.yaml.example for the format.
+
+detect-secrets:
+  # The SAM guide's curl examples post a made-up demo secret, which the keyword
+  # detector reads as a real credential.
+  exclude:
+    - (^|/)docs/sam\.md$
