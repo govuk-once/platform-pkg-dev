@@ -31,18 +31,21 @@ The dynamo example scaffolds an API with a DynamoDB-backed items endpoint.
 
 ### Endpoints
 
-| Method | Path          | Description        |
-| ------ | ------------- | ------------------ |
-| `GET`  | `/items`      | List all items     |
-| `GET`  | `/items/{id}` | Get one item by id |
-| `POST` | `/items`      | Create an item     |
+| Method | Path                 | Description    |
+| ------ | -------------------- | -------------- |
+| `GET`  | `/dynamo-items`      | List all items |
+| `GET`  | `/dynamo-items/{id}` | Get one item   |
+| `POST` | `/dynamo-items`      | Create an item |
 
 ### Create an item
 
+Include a `secret` to see it encrypted with KMS before it is stored (see
+[Encrypted fields](#encrypted-fields-kms)).
+
 ```sh
-curl -X POST http://localhost:3000/items \
+curl -X POST http://localhost:3000/dynamo-items \
   -H 'Content-Type: application/json' \
-  -d '{"id": "item-1", "name": "First item", "category": "demo"}'
+  -d '{"id": "item-1", "name": "First item", "category": "demo", "secret": "api-key-123"}'
 ```
 
 Response (201):
@@ -53,61 +56,115 @@ Response (201):
   "id": "item-1",
   "name": "First item",
   "category": "demo",
-  "createdAt": "2026-11-05T09:00:00.000Z"
+  "createdAt": "2026-11-05T09:00:00.000Z",
+  "secret": {
+    "encrypted": "YTgwOTEyMTgtYzFl...",
+    "decrypted": "api-key-123"
+  }
 }
 ```
 
 ### List all items
 
 ```sh
-curl http://localhost:3000/items
+curl http://localhost:3000/dynamo-items
 ```
 
-Response (200):
-
-```json
-[
-  {
-    "pk": "item-1",
-    "id": "item-1",
-    "name": "First item",
-    "category": "demo",
-    "createdAt": "2026-11-05T09:00:00.000Z"
-  }
-]
-```
+Response (200): an array of items in the same shape. Items created without a
+`secret` have no `secret` field.
 
 ### Get a single item
 
 ```sh
-curl http://localhost:3000/items/item-1
+curl http://localhost:3000/dynamo-items/item-1
 ```
 
-Response (200):
-
-```json
-{
-  "pk": "item-1",
-  "id": "item-1",
-  "name": "First item",
-  "category": "demo",
-  "createdAt": "2026-11-05T09:00:00.000Z"
-}
-```
+Response (200): the item, in the same shape as the create response.
 
 ### Create several items
 
 ```sh
-curl -X POST http://localhost:3000/items \
+curl -X POST http://localhost:3000/dynamo-items \
   -H 'Content-Type: application/json' \
-  -d '{"id": "item-2", "name": "Second item"}'
+  -d '{"id": "item-2", "name": "Second item", "secret": "another-key-456"}'
 
-curl -X POST http://localhost:3000/items \
+curl -X POST http://localhost:3000/dynamo-items \
   -H 'Content-Type: application/json' \
-  -d '{"id": "item-3", "name": "Third item", "status": "active"}'
+  -d '{"id": "item-3", "name": "No secret", "status": "active"}'
 
-curl http://localhost:3000/items
+curl http://localhost:3000/dynamo-items
 ```
+
+## Encrypted fields (KMS)
+
+The dynamo and DSQL examples each create a KMS key (LocalStack provides KMS
+locally). If a POST body includes `secret`, the Lambda encrypts it with that key
+and stores only the ciphertext: the `secretCiphertext` attribute in DynamoDB, the
+`secret_ciphertext` column in DSQL. The plaintext is never written.
+
+So you can see the stored value really is encrypted, every response from these
+examples returns both sides:
+
+```json
+"secret": {
+  "encrypted": "YTgwOTEyMTgtYzFl...",
+  "decrypted": "api-key-123"
+}
+```
+
+`encrypted` is exactly what is in the database; `decrypted` comes from a KMS
+`Decrypt` call made for the response. That is for the demo only. A real API
+should not return the decrypted secret.
+
+Without a `secret` in the POST body there is nothing to encrypt, so the stored
+ciphertext is empty and the response has no `secret` field.
+
+The item id is bound into the ciphertext (the KMS encryption context), so a
+ciphertext copied onto another item will not decrypt.
+
+Locally, each key is reached through the alias `alias/<KeyLogicalId>`, which
+`dev sam:start` creates in LocalStack and passes to the Lambda as `KMS_KEY_ID`.
+Deployed, `KMS_KEY_ID` is the real key id.
+
+## Example: DSQL (dsql)
+
+The DSQL example runs an Aurora DSQL-backed items API against a local DSQL
+emulator. It has the same shape as the dynamo example, including the encrypted
+`secret` field, which is stored in its own `secret_ciphertext` column.
+
+| Method | Path               | Description    |
+| ------ | ------------------ | -------------- |
+| `GET`  | `/dsql-items`      | List all items |
+| `GET`  | `/dsql-items/{id}` | Get one item   |
+| `POST` | `/dsql-items`      | Create an item |
+
+```sh
+curl -X POST http://localhost:3000/dsql-items \
+  -H 'Content-Type: application/json' \
+  -d '{"id": "item-1", "name": "Demo", "secret": "api-key-123"}'
+
+curl http://localhost:3000/dsql-items/item-1
+curl http://localhost:3000/dsql-items
+```
+
+Response (200) for the single item:
+
+```json
+{
+  "id": "item-1",
+  "name": "Demo",
+  "secret": {
+    "encrypted": "NjdhMjExNzQtM2Mx...",
+    "decrypted": "api-key-123"
+  },
+  "createdAt": "2026-11-09T10:41:00.181Z"
+}
+```
+
+The handler connects as `admin` over TLS in both environments. Deployed, it mints
+an IAM auth token per connection with `DsqlSigner`. Locally, `dev sam:start` sets
+`DSQL_LOCAL_ENDPOINT` to the emulator, which accepts any token. The table comes
+from the stack's `sam:dsql-schema` metadata, applied to the emulator on start.
 
 ## Example: SQS Queue (queue)
 
@@ -241,9 +298,9 @@ simultaneously:
 
 ```sh
 # Create an item (dynamo stack)
-curl -X POST http://localhost:3000/items \
+curl -X POST http://localhost:3000/dynamo-items \
   -H 'Content-Type: application/json' \
-  -d '{"id": "item-1", "name": "Hello"}'
+  -d '{"id": "item-1", "name": "Hello", "secret": "api-key-123"}'
 
 # Send a message (queue stack)
 curl -X POST http://localhost:3000/messages \
@@ -251,10 +308,18 @@ curl -X POST http://localhost:3000/messages \
   -d '{"action": "notify", "target": "item-1"}'
 
 # List items
-curl http://localhost:3000/items
+curl http://localhost:3000/dynamo-items
 ```
 
 ## How it works
+
+`src/` is the Lambda package: it has its own `package.json` (the handlers' runtime
+libraries, such as `pg` and the AWS SDK clients) and `tsconfig.json`, and is
+listed in `pnpm-workspace.yaml`. Add a handler dependency there, not at the root:
+
+```sh
+pnpm --filter ./src add zod
+```
 
 1. **CDK Aspect** (`SAMLocalAspect` from `@govuk-connect/dev/sam`) — intercepts
    Lambda functions tagged with `sam:source-entry` metadata and redirects them to

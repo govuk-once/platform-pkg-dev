@@ -9,6 +9,7 @@ import { Code, Function as LambdaFunction, type CfnFunction } from 'aws-cdk-lib/
 import type { Asset } from 'aws-cdk-lib/aws-s3-assets';
 import { type CfnTable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { type CfnQueue, Queue } from 'aws-cdk-lib/aws-sqs';
+import { type CfnKey, Key } from 'aws-cdk-lib/aws-kms';
 
 import type { LocalResourceTable, SharedAssetCachedS3, LocalResourceSharedEnv } from './types.js';
 
@@ -42,6 +43,8 @@ export class SAMLocalAspect implements IAspect {
   private assetPath?: string;
   private collectedTables: LocalResourceTable[] = [];
   private collectedQueues: Map<string, string> = new Map();
+  private collectedDsqlSchemas: { type: 'dsql-table'; localName: string; schemaSql: string }[] = [];
+  private collectedKeys: { type: 'kms-key'; localName: string }[] = [];
   private repoRoot: string;
   private wrapperHandler: string;
 
@@ -72,6 +75,11 @@ export class SAMLocalAspect implements IAspect {
       this.collectTable(node);
     }
 
+    if (node instanceof Key) {
+      const cfn = node.node.defaultChild as CfnKey;
+      this.collectedKeys.push({ type: 'kms-key', localName: Stack.of(cfn).getLogicalId(cfn) });
+    }
+
     if (node instanceof Queue) {
       this.collectQueue(node);
     }
@@ -91,6 +99,8 @@ export class SAMLocalAspect implements IAspect {
   private writeManifest(): void {
     const resources: unknown[] = [
       ...this.collectedTables,
+      ...this.collectedDsqlSchemas,
+      ...this.collectedKeys,
       ...[...this.collectedQueues.entries()].map(([, url]) => ({
         type: 'sqs-queue' as const,
         // oxlint-disable-next-line typescript/no-non-null-assertion
@@ -182,9 +192,21 @@ export class SAMLocalAspect implements IAspect {
       AWS_ENDPOINT_URL_SQS: 'http://localstack:4566',
       AWS_ENDPOINT_URL_S3: 'http://localstack:4566',
       AWS_ENDPOINT_URL_KMS: 'http://localstack:4566',
+      DSQL_LOCAL_ENDPOINT: 'sam-dsql-emulator',
     };
 
+    const schemaSql = node.node.metadata.find((m) => m.type === 'sam:dsql-schema')?.data;
+    if (typeof schemaSql === 'string') {
+      this.collectedDsqlSchemas.push({
+        type: 'dsql-table',
+        localName: Stack.of(node).getLogicalId(cfn),
+        schemaSql,
+      });
+    }
+
     cfn.addPropertyOverride('Handler', this.wrapperHandler);
+    // The first request bundles the handler, which alone can outlast the 3s default.
+    cfn.addPropertyOverride('Timeout', Math.max(cfn.timeout ?? 3, 30));
     cfn.addPropertyOverride('Code', {
       S3Bucket: s3.bucketName,
       S3Key: s3.objectKey,

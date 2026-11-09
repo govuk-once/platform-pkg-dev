@@ -1,11 +1,25 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile as readFileAsync, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { parseArgs } from 'node:util';
 import { bold, dim, fail, info, ok, step, warn } from '../lib/log.js';
 import { binPath } from '../lib/toolchain.js';
 import { renderTemplateDir, substitute, TEMPLATES_ROOT } from '../lib/render.js';
+import {
+  buildFunctionsPackageJson,
+  FUNCTIONS_DIR,
+  SAM_EXAMPLES,
+  type SamExample,
+} from '../lib/functions-package.js';
+import { installDependencies } from '../lib/install.js';
+import {
+  addWorkspacePackage,
+  readWorkspaceFile,
+  renderWorkspaceFile,
+  WORKSPACE_FILE,
+  workspaceRootFor,
+} from '../lib/workspace.js';
 import type { RunContext } from './run.js';
 
 export const CDK_USAGE = `${bold('dev cdk:init')} - scaffold the CDK app for this package
@@ -16,7 +30,7 @@ Usage
 Options
   --dir <name>  Directory to create, relative to the package (default: cdk)
   --sam              Include SAM local dev (API GW + Lambda example)
-  --sam-example <t>  Example stack: dynamo (default) or queue
+  --sam-example <t>  Example stacks, comma-separated: dsql, dynamo (default), queue
   --force       Replace an existing CDK directory
   --cwd <path>  Run against this package instead of the current directory
   --help        Show this message
@@ -103,7 +117,7 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
 
   // Layered on top of cdk init's output, deliberately: the structure and the
   // feature flags are its job, the stack and the compiler settings are ours.
-  const samExamples = (values['sam-example'] ?? 'dynamo').split(',') as ('dynamo' | 'queue')[];
+  const samExamples = parseSamExamples(values['sam-example']);
   const vars = { packageName: packageName(context.cwd), stackId: stackId(context.cwd) };
 
   if (values.sam !== true) {
@@ -127,14 +141,17 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
       await writeFile(stackDest, content, 'utf8');
       ok(join(name, 'lib', stackName));
 
+      // Every example stack points sam:source-entry at src/<example>/.
+      const handlerDir = join(FUNCTIONS_DIR, ex);
       const handlerWritten = await renderTemplateDir(
         `sam-handlers/${ex}`,
-        join(context.cwd, 'src'),
+        join(context.cwd, handlerDir),
         vars,
         { force: false },
       );
-      for (const file of handlerWritten.written.toSorted()) ok(join('src', file));
-      for (const file of handlerWritten.skipped) info(dim(`  skipped src/${file} (exists)`));
+      for (const file of handlerWritten.written.toSorted()) ok(join(handlerDir, file));
+      for (const file of handlerWritten.skipped)
+        info(dim(`  skipped ${handlerDir}/${file} (exists)`));
     }
 
     // When multiple examples, rewrite app.ts to import all stacks
@@ -142,17 +159,24 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
       const sid = stackId(context.cwd);
       await writeFile(join(target, 'bin', 'app.ts'), buildMultiStackApp(samExamples, sid), 'utf8');
     }
+
+    await scaffoldFunctionsPackage(context.cwd, samExamples);
   }
 
   await pointAppAtTypeStripping(target);
   ok(`${join(name, 'cdk.json')} app -> node bin/app.ts`);
 
+  // src/package.json is new, so node_modules does not match it until pnpm runs.
+  if (values.sam === true) {
+    info('');
+    const root = (await workspaceRootFor(context.cwd)) ?? context.cwd;
+    if (installDependencies(root) !== 0)
+      warn('pnpm install failed - run it before `dev sam:start`.');
+  }
+
   info('');
   info(bold('Next steps'));
   if (values.sam === true) {
-    info(`  Ensure esbuild and @esbuild/linux-x64 are devDependencies:`);
-    info(`  ${dim('pnpm add -D esbuild @esbuild/linux-x64')}`);
-    info('');
     info(`  Start the local API:`);
     info(`  ${dim('dev sam:start')}`);
   } else {
@@ -244,9 +268,57 @@ function stackId(cwd: string): string {
 }
 
 const STACK_CLASS: Record<string, string> = {
+  dsql: 'DsqlStack',
   dynamo: 'DynamoStack',
   queue: 'QueueStack',
 };
+
+function parseSamExamples(flag: string | undefined): SamExample[] {
+  const names = (flag ?? 'dynamo').split(',').map((name) => name.trim());
+  for (const name of names) {
+    if (!SAM_EXAMPLES.includes(name as SamExample)) {
+      fail(`Unknown --sam-example "${name}".`, `Choose from: ${SAM_EXAMPLES.join(', ')}.`);
+    }
+  }
+  return [...new Set(names)] as SamExample[];
+}
+
+/**
+ * Makes src/ the Lambda package: its own package.json and tsconfig, registered in
+ * the workspace so pnpm installs it. The SAM wrapper bundles each handler against
+ * the nearest package.json, so handler deps resolve from src/ - never the CDK root.
+ */
+async function scaffoldFunctionsPackage(
+  cwd: string,
+  examples: readonly SamExample[],
+): Promise<void> {
+  const dir = join(cwd, FUNCTIONS_DIR);
+  const manifestPath = join(dir, 'package.json');
+  const existing = existsSync(manifestPath) ? await readFileAsync(manifestPath, 'utf8') : undefined;
+
+  await mkdir(dir, { recursive: true });
+  await writeFile(
+    manifestPath,
+    buildFunctionsPackageJson(packageName(cwd), examples, existing),
+    'utf8',
+  );
+  ok(join(FUNCTIONS_DIR, 'package.json'));
+
+  const tsconfig = await renderTemplateDir('sam-functions', dir, {}, { force: false });
+  for (const file of tsconfig.written) ok(join(FUNCTIONS_DIR, file));
+
+  // A workspace member's src/ is registered with the workspace root, not itself.
+  const root = (await workspaceRootFor(cwd)) ?? cwd;
+  const glob = relative(root, dir);
+  const current = await readWorkspaceFile(root);
+  const next =
+    current === undefined ? renderWorkspaceFile([glob]) : addWorkspacePackage(current, glob);
+
+  if (next !== current) {
+    await writeFile(join(root, WORKSPACE_FILE), next, 'utf8');
+    ok(`${relative(cwd, join(root, WORKSPACE_FILE))} packages += ${glob}`);
+  }
+}
 
 function buildMultiStackApp(examples: readonly string[], baseStackId: string): string {
   const imports = examples

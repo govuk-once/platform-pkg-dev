@@ -12,6 +12,7 @@ import {
 import { CODE_ARTIFACT_ACCOUNT } from '../versions.js';
 import { bold, dim, fail, info, ok, step, warn } from '../lib/log.js';
 import { ask, choose, closePrompts, confirm } from '../lib/prompt.js';
+import { SAM_EXAMPLES, type SamExample } from '../lib/functions-package.js';
 import { inspectEnvironment, reportPreflight } from '../lib/preflight.js';
 import {
   isSeedFile,
@@ -46,7 +47,7 @@ Options
   --no-cdk           Skip CDK
   --sam              Add SAM local dev (requires CDK)
   --no-sam           Skip SAM
-  --sam-example <t>  Example stack: dynamo (default) or queue
+  --sam-example <t>  Example stacks, comma-separated: dsql, dynamo (default), queue
   --package          Publishable library (adds dual ESM/CJS tsconfigs)
   --no-package       Application, not a published library
   --workspace        Workspace root (adds pnpm-workspace.yaml + packages/)
@@ -213,7 +214,7 @@ async function collectAnswers(
     (acceptDefaults ? false : await confirm('Add CDK?', { defaultValue: true, flag: '--cdk' }));
 
   let sam = false;
-  let samExamples: ('dynamo' | 'queue')[] | undefined;
+  let samExamples: SamExample[] | undefined;
 
   if (cdk) {
     sam =
@@ -227,15 +228,16 @@ async function collectAnswers(
       if (exFlag !== undefined) {
         const parsed = exFlag.split(',').map((s) => s.trim());
         for (const v of parsed) {
-          if (v !== 'dynamo' && v !== 'queue') {
-            fail(`Unknown --sam-example "${v}".`, 'Choose dynamo, queue, or both (dynamo,queue).');
+          if (!SAM_EXAMPLES.includes(v as SamExample)) {
+            fail(`Unknown --sam-example "${v}".`, `Choose from: ${SAM_EXAMPLES.join(', ')}.`);
           }
         }
-        samExamples = parsed as ('dynamo' | 'queue')[];
+        samExamples = parsed as SamExample[];
       } else if (!acceptDefaults) {
         samExamples = await choose('Example stacks:', {
           flag: '--sam-example',
           choices: [
+            { label: 'API GW → Lambda → DSQL', value: 'dsql' as const },
             { label: 'API GW → Lambda → DynamoDB', value: 'dynamo' as const },
             { label: 'API GW → Lambda → SQS → Lambda', value: 'queue' as const },
           ],

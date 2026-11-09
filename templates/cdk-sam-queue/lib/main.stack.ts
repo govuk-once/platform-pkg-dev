@@ -22,7 +22,7 @@ export class MainStack extends Stack {
       },
     });
 
-    producer.node.addMetadata('sam:source-entry', 'src/producer.ts');
+    producer.node.addMetadata('sam:source-entry', 'src/queue/queue-producer.handler.ts');
 
     queue.grantSendMessages(producer);
 
@@ -32,7 +32,7 @@ export class MainStack extends Stack {
       code: Code.fromInline('exports.handler = async () => ({})'),
     });
 
-    consumer.node.addMetadata('sam:source-entry', 'src/consumer.ts');
+    consumer.node.addMetadata('sam:source-entry', 'src/queue/queue-consumer.handler.ts');
 
     consumer.addEventSource(new SqsEventSource(queue, { batchSize: 10 }));
 

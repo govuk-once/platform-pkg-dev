@@ -1,3 +1,4 @@
+import type { SamExample } from './functions-package.js';
 import { MANAGED_FIELDS, MANAGED_PINS } from './pins.js';
 
 export interface ScaffoldAnswers {
@@ -10,7 +11,7 @@ export interface ScaffoldAnswers {
   /** Add SAM local development support (requires CDK). */
   readonly sam: boolean;
   /** Which example stacks to scaffold when SAM is enabled. */
-  readonly samExamples?: readonly ('dynamo' | 'queue')[];
+  readonly samExamples?: readonly SamExample[];
   /** Publishable library: dual ESM/CJS build and an exports map. */
   readonly isPackage: boolean;
   /** Workspace root: gets a pnpm-workspace.yaml with the shared settings. */

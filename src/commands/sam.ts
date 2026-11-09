@@ -94,7 +94,47 @@ export async function runSamSynth(argv: readonly string[], context: RunContext):
   if ((result.status ?? 1) !== 0) return result.status ?? 1;
 
   ok(`Synthesised to ${join(values.dir ?? 'cdk', '.aws-sam')}`);
+  await prepareLocalTemplate(samOut);
   return 0;
+}
+
+const COMBINED_TEMPLATE = 'sam-combined.template.json';
+
+function stackTemplates(files: readonly string[]): string[] {
+  return files.filter((f) => f.endsWith('.template.json') && f !== COMBINED_TEMPLATE);
+}
+
+/**
+ * Rewrites every stack template for LocalStack, so `sam local invoke -t <stack>` works
+ * on its own, then merges them - `sam local start-api` takes a single template.
+ */
+async function prepareLocalTemplate(samOut: string): Promise<void> {
+  const stacks = stackTemplates(await readdir(samOut));
+  if (stacks.length === 0) {
+    fail('No CloudFormation template found after synth.', 'Check your CDK app.');
+  }
+
+  for (const file of stacks) {
+    const path = join(samOut, file);
+    const tpl = JSON.parse(readFileSync(path, 'utf8')) as CfnTemplate;
+    rewriteLocalRefs(tpl);
+    writeFileSync(path, JSON.stringify(tpl, null, 2), 'utf8');
+  }
+
+  if (stacks.length > 1) {
+    mergeTemplates(
+      stacks.map((f) => join(samOut, f)),
+      join(samOut, COMBINED_TEMPLATE),
+    );
+    ok(`Merged ${stacks.length} stacks into ${COMBINED_TEMPLATE}`);
+  }
+}
+
+/** The template `sam local start-api` should serve, as left by `prepareLocalTemplate`. */
+async function localTemplatePath(samOut: string): Promise<string> {
+  const combined = join(samOut, COMBINED_TEMPLATE);
+  if (existsSync(combined)) return combined;
+  return join(samOut, stackTemplates(await readdir(samOut))[0] as string);
 }
 
 export async function runSamStart(argv: readonly string[], context: RunContext): Promise<number> {
@@ -105,34 +145,14 @@ export async function runSamStart(argv: readonly string[], context: RunContext):
     return 0;
   }
 
-  cdkDir(context.cwd, values.dir);
   const target = cdkDir(context.cwd, values.dir);
 
   // Synth
   const synthResult = await runSamSynth(argv, context);
   if (synthResult !== 0) return synthResult;
 
-  // Find the template file(s) — SAM only takes one, so merge if needed
   const samOut = join(target, '.aws-sam');
-  const templateFiles = (await readdir(samOut)).filter((f) => f.endsWith('.template.json'));
-  if (templateFiles.length === 0) {
-    fail('No CloudFormation template found after synth.', 'Check your CDK app.');
-  }
-
-  let template: string;
-  if (templateFiles.length === 1) {
-    template = join(samOut, templateFiles[0] as string);
-    const tpl = JSON.parse(readFileSync(template, 'utf8')) as CfnTemplate;
-    rewriteQueueRefs(tpl);
-    writeFileSync(template, JSON.stringify(tpl, null, 2), 'utf8');
-  } else {
-    template = join(samOut, 'sam-combined.template.json');
-    mergeTemplates(
-      templateFiles.map((f) => join(samOut, f)),
-      template,
-    );
-    ok(`Merged ${templateFiles.length} stacks into sam-combined.template.json`);
-  }
+  const template = await localTemplatePath(samOut);
 
   // Docker compose up (using the dev package's docker-compose.yml)
   const compose = join(SAM_PKG_DIR, 'docker-compose.yml');
@@ -240,23 +260,28 @@ function mergeTemplates(paths: string[], outPath: string): void {
     Object.assign(merged.Outputs!, tpl.Outputs ?? {});
   }
 
-  rewriteQueueRefs(merged);
   writeFileSync(outPath, JSON.stringify(merged, null, 2), 'utf8');
 }
 
-function rewriteQueueRefs(template: CfnTemplate): void {
+/**
+ * SAM resolves `{Ref: X}` to the bare logical id, which no SDK client can use. Point
+ * the Refs that matter at what LocalStack actually serves: a queue URL, and the
+ * alias `init-local-resources` gives each KMS key (LocalStack picks its own key ids).
+ */
+function rewriteLocalRefs(template: CfnTemplate): void {
   const resources = template.Resources ?? {};
 
-  const queueUrls = new Map<string, string>();
+  const localValues = new Map<string, string>();
   for (const [id, resource] of Object.entries(resources)) {
     const r = resource as { Type?: string; Properties?: { QueueName?: string } };
     if (r.Type === 'AWS::SQS::Queue') {
       const name = r.Properties?.QueueName ?? id;
-      queueUrls.set(id, `http://localstack:4566/000000000000/${name}`);
+      localValues.set(id, `http://localstack:4566/000000000000/${name}`);
     }
+    if (r.Type === 'AWS::KMS::Key') localValues.set(id, `alias/${id}`);
   }
 
-  if (queueUrls.size === 0) return;
+  if (localValues.size === 0) return;
 
   for (const resource of Object.values(resources)) {
     const r = resource as { Type?: string; Properties?: Record<string, unknown> };
@@ -269,11 +294,8 @@ function rewriteQueueRefs(template: CfnTemplate): void {
 
     for (const [key, val] of Object.entries(env.Variables)) {
       if (typeof val === 'object' && val !== null && 'Ref' in val) {
-        const ref = (val as { Ref: string }).Ref;
-        const localUrl = queueUrls.get(ref);
-        if (localUrl !== undefined) {
-          env.Variables[key] = localUrl;
-        }
+        const local = localValues.get((val as { Ref: string }).Ref);
+        if (local !== undefined) env.Variables[key] = local;
       }
     }
   }

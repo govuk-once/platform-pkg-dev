@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { parseDocument } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import {
+  addWorkspacePackage,
   applyWorkspaceSettings,
   renderWorkspaceFile,
   workspaceRootFor,
@@ -61,6 +62,31 @@ describe('applyWorkspaceSettings', () => {
     // pnpm reads minimumReleaseAge in minutes, so a value that looks like days
     // would silently be a seven-minute window.
     expect(WORKSPACE_SETTINGS['minimumReleaseAge']).toBe(7 * 24 * 60);
+  });
+});
+
+describe('addWorkspacePackage', () => {
+  it('appends the glob and keeps everything else', () => {
+    const content = "# mine\npackages:\n  - '.'\nallowBuilds:\n  esbuild: true\n";
+    const next = addWorkspacePackage(content, 'src');
+
+    expect(parseDocument(next).toJS()).toEqual({
+      packages: ['.', 'src'],
+      allowBuilds: { esbuild: true },
+    });
+    expect(next).toContain('# mine');
+  });
+
+  it('leaves a file that already lists the glob untouched', () => {
+    const content = "packages:\n  - 'src'\n";
+    expect(addWorkspacePackage(content, 'src')).toBe(content);
+  });
+
+  it('creates the packages list when there is none', () => {
+    expect(parseDocument(addWorkspacePackage('allowBuilds: {}\n', 'src')).toJS()).toEqual({
+      allowBuilds: {},
+      packages: ['src'],
+    });
   });
 });
 

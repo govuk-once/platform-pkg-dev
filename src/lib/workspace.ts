@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
-import { isMap, parseDocument } from 'yaml';
+import { isMap, isScalar, isSeq, parseDocument } from 'yaml';
 import { WORKSPACE_SETTINGS } from '../versions.js';
 
 /** pnpm reads its settings from here in pnpm 10, not from .npmrc. */
@@ -73,6 +73,21 @@ export function renderWorkspaceFile(
 ): string {
   const listed = globs.map((glob) => `  - '${glob}'`).join('\n');
   return applyWorkspaceSettings(`${HEADER}packages:\n${listed}\n`, options).content;
+}
+
+/** Adds a package glob to a workspace file, leaving everything else as written. */
+export function addWorkspacePackage(content: string, glob: string): string {
+  const doc = parseDocument(content);
+  const packages = doc.get('packages');
+
+  if (isSeq(packages)) {
+    if (packages.items.some((item) => isScalar(item) && item.value === glob)) return content;
+    packages.add(glob);
+  } else {
+    doc.set('packages', doc.createNode([glob]));
+  }
+
+  return doc.toString({ lineWidth: 0, flowCollectionPadding: false });
 }
 
 /** Reads a package's workspace file, or undefined when it is not one. */
