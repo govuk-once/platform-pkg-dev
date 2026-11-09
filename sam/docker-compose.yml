@@ -5,7 +5,10 @@ networks:
 
 services:
   localstack:
-    image: localstack/localstack:3.8
+    # Pinned by digest: a tag can be moved to different content, a digest cannot.
+    # The tag is kept for readability; Docker pulls by the digest. The current
+    # LocalStack images need an auth token; 3.8.1 runs without one.
+    image: localstack/localstack:3.8.1@sha256:b279c01f4cfb8f985a482e4014cabc1e2697b9d7a6c8c8db2e40f4d9f93687c7
     container_name: sam-localstack
     networks: [sam-local]
     ports:
@@ -19,7 +22,7 @@ services:
       retries: 10
 
   dsql-emulator:
-    image: ghcr.io/dreamescaper/dsql-emulator:latest
+    image: ghcr.io/dreamescaper/dsql-emulator:0.3.0@sha256:cca8369d60a294190ded14b31d81c8290e409e25d13d04e509c7b0ecf46b9316
     container_name: sam-dsql-emulator
     networks: [sam-local]
     ports:
