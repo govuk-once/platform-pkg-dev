@@ -34,8 +34,9 @@ function getPool(): Pool {
     user: 'admin',
     // IAM tokens expire, so one is minted per new connection. The emulator accepts any token.
     password: async () => (signer === undefined ? 'local' : signer.getDbConnectAdminAuthToken()),
-    // The emulator's certificate is self-signed.
-    ssl: { rejectUnauthorized: LOCAL_ENDPOINT === undefined },
+    // Verified TLS against the real cluster. The local emulator gets a plain connection:
+    // its certificate is self-signed, so unverified TLS would add no protection.
+    ssl: LOCAL_ENDPOINT === undefined ? { rejectUnauthorized: true } : false,
     max: 1,
   });
   return pool;

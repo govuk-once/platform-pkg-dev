@@ -39,7 +39,7 @@ const sqs = new SQSClient({
   credentials: LOCAL_CREDS,
 });
 
-// Same shape as a real DSQL connection (admin, a token, TLS); the emulator accepts any token.
+// Same user and token handling as a real DSQL connection; the emulator accepts any token.
 function createDsqlClient() {
   return new Client({
     host: DSQL_HOST,
@@ -47,7 +47,9 @@ function createDsqlClient() {
     database: 'postgres',
     user: 'admin',
     password: 'local', // pragma: allowlist secret
-    ssl: { rejectUnauthorized: false },
+    // Plain connection to the local emulator: TLS without verifying its self-signed
+    // certificate would add no protection, and the emulator accepts both.
+    ssl: false,
   });
 }
 

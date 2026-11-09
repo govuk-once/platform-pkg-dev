@@ -161,9 +161,11 @@ Response (200) for the single item:
 }
 ```
 
-The handler connects as `admin` over TLS in both environments. Deployed, it mints
-an IAM auth token per connection with `DsqlSigner`. Locally, `dev sam:start` sets
-`DSQL_LOCAL_ENDPOINT` to the emulator, which accepts any token. The table comes
+The handler connects as `admin`. Deployed, it uses verified TLS and mints an IAM
+auth token per connection with `DsqlSigner`. Locally, `dev sam:start` sets
+`DSQL_LOCAL_ENDPOINT` to the emulator, which accepts any token over a plain
+connection (its certificate is self-signed, so unverified TLS would add no
+protection). The table comes
 from the stack's `sam:dsql-schema` metadata, applied to the emulator on start.
 
 ## Example: SQS Queue (queue)
