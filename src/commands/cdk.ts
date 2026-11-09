@@ -4,7 +4,7 @@ import { mkdir, readdir, readFile as readFileAsync, rm, writeFile } from 'node:f
 import { join, relative } from 'node:path';
 import { parseArgs } from 'node:util';
 import { bold, dim, fail, info, ok, step, warn } from '../lib/log.js';
-import { binPath } from '../lib/toolchain.js';
+import { binPath, runTool } from '../lib/toolchain.js';
 import { renderTemplateDir, substitute, TEMPLATES_ROOT } from '../lib/render.js';
 import {
   buildFunctionsPackageJson,
@@ -165,6 +165,10 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
 
   await pointAppAtTypeStripping(target);
   ok(`${join(name, 'cdk.json')} app -> node bin/app.ts`);
+
+  // cdk init's output and the cdk.json rewrite land after `dev init` formatted the
+  // package, so format them here or the first commit fails the format hook.
+  runTool('oxfmt', [name], { cwd: context.cwd, stdio: 'ignore' });
 
   // src/package.json is new, so node_modules does not match it until pnpm runs.
   if (values.sam === true) {

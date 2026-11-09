@@ -1,21 +1,20 @@
-import { Stack, type StackProps } from 'aws-cdk-lib';
-import type { Construct } from 'constructs';
+import { Stack } from 'aws-cdk-lib';
 
 /**
  * Root stack for {{packageName}}.
  *
- * Add constructs in the constructor, for example:
+ * Add constructs in a constructor, for example:
  *
+ *   import { Duration, type StackProps } from 'aws-cdk-lib';
  *   import { Queue } from 'aws-cdk-lib/aws-sqs';
- *   import { Duration } from 'aws-cdk-lib';
+ *   import type { Construct } from 'constructs';
  *
- *   new Queue(this, 'Work', { visibilityTimeout: Duration.seconds(300) });
+ *   constructor(scope: Construct, id: string, props?: StackProps) {
+ *     super(scope, id, props);
+ *     new Queue(this, 'Work', { visibilityTimeout: Duration.seconds(300) });
+ *   }
  *
  * Import from the service-specific entry points (`aws-cdk-lib/aws-sqs`) rather
  * than the package root - the root pulls in every service.
  */
-export class MainStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
-  }
-}
+export class MainStack extends Stack {}

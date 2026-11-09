@@ -170,9 +170,15 @@ JSON
   # Automatically approve build/postinstall scripts for the dev dependency
   # before running pnpm install so pnpm doesn't fail with ERR_PNPM_IGNORED_BUILDS.
   # Pre-seed pnpm-workspace.yaml so pnpm 10/12 allows build scripts on initial install
+  # The release-age policy applies from this very first install. pnpm checks the
+  # lockfile against it on every later install, so anything resolved here without
+  # it would be rejected by the next one.
   cat > pnpm-workspace.yaml <<YAML
 packages:
   - '.'
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - "@govuk-connect/dev"
 allowBuilds:
   "@govuk-connect/dev": true
   "@govuk-connect/dev@${PKG_DEV}": true
