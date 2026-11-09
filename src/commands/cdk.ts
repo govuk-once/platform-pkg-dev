@@ -4,7 +4,7 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { bold, fail, info, ok, step, warn } from '../lib/log.js';
-import { binPath } from '../lib/toolchain.js';
+import { binPath, runTool } from '../lib/toolchain.js';
 import { renderTemplateDir } from '../lib/render.js';
 import type { RunContext } from './run.js';
 
@@ -109,6 +109,10 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
 
   await pointAppAtTypeStripping(target);
   ok(`${join(name, 'cdk.json')} app -> node bin/app.ts`);
+
+  // cdk init's output and the cdk.json rewrite land after `dev init` formatted the
+  // package, so format them here or the first commit fails the format hook.
+  runTool('oxfmt', [name], { cwd: context.cwd, stdio: 'ignore' });
 
   info('');
   info(bold('Next steps'));

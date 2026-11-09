@@ -1,7 +1,10 @@
 {
   "extends": "@govuk-connect/dev/tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    // cdk/bin/app.ts imports `../lib/main.stack.ts` by its .ts name, which Node's
+    // type stripping needs. This allows it, and rewrites it to .js on emit.
+    "rewriteRelativeImportExtensions": true
   },
   "include": ["src/**/*", "cdk/**/*", "packages/**/*"],
   "exclude": ["node_modules", "dist"]
