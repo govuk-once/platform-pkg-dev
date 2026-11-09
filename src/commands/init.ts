@@ -400,7 +400,16 @@ async function scaffold(
   }
 
   if (answers.isWorkspace) {
-    reports.push(await writeGenerated(targetDir, WORKSPACE_FILE, renderWorkspaceFile(), options));
+    // The release-age policy is written before the first install, never added
+    // afterwards: pnpm checks the lockfile against it on every install, so
+    // anything resolved without it would be rejected by the next one. With it
+    // on, pnpm resolves each range to the newest version old enough to pass.
+    reports.push(
+      await writeGenerated(targetDir, WORKSPACE_FILE, renderWorkspaceFile(), {
+        ...options,
+        force: options.force || bootstrapped,
+      }),
+    );
     await mkdir(join(targetDir, 'packages'), { recursive: true });
     await writeGenerated(targetDir, join('packages', '.gitkeep'), '', options);
   }

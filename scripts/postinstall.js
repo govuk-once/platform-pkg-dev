@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, chmodSync, readdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -8,6 +8,15 @@ if (process.env.DEV_BOOTSTRAPPING) {
   process.exit(0);
 }
 
+// npm strips execute bits from published files — restore them for shipped hooks.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const hooksDir = join(__dirname, '..', 'hooks');
+if (existsSync(hooksDir)) {
+  for (const name of readdirSync(hooksDir)) {
+    chmodSync(join(hooksDir, name), 0o755);
+  }
+}
+
 // 2. Skip if .githooks hasn't been scaffolded yet
 const cwd = process.env.INIT_CWD || process.cwd();
 if (!existsSync(join(cwd, '.githooks'))) {
@@ -15,7 +24,6 @@ if (!existsSync(join(cwd, '.githooks'))) {
 }
 
 // 3. Resolve path to dist/cli.js
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const cliPath = join(__dirname, '..', 'dist', 'cli.js');
 
 // 4. Skip if the package hasn't been built yet
