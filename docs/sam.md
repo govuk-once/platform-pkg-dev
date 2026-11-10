@@ -14,11 +14,11 @@ This does everything: synths the CDK app with the SAM Aspect, starts LocalStack
 
 ## Commands
 
-| Command         | What it does                                            |
-| --------------- | ------------------------------------------------------- |
-| `dev sam:start` | Synth → LocalStack up → provision resources → start API |
-| `dev sam:synth` | Synthesise only (outputs to `cdk/.aws-sam/`)            |
-| `dev sam:stop`  | Tear down LocalStack and clean up Lambda containers     |
+| Command                 | What it does                                            |
+| ----------------------- | ------------------------------------------------------- |
+| `dev sam:start [entry]` | Synth → LocalStack up → provision resources → start API |
+| `dev sam:synth [entry]` | Synthesise only (outputs to `cdk/.aws-sam/`)            |
+| `dev sam:stop`          | Tear down LocalStack and clean up Lambda containers     |
 
 ## Prerequisites
 
