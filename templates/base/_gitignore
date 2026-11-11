@@ -30,3 +30,6 @@ cdk.out/
 cdk/.aws-sam/
 cdk.context.json
 cdk/cdk.json
+
+# SAM
+.sam/
