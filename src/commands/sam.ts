@@ -16,9 +16,13 @@ const SAM_DIST_DIR = fileURLToPath(new URL('../sam/', import.meta.url));
 export const SAM_USAGE = `${bold('dev sam:<command>')} - local Lambda development with SAM + LocalStack
 
 Usage
-  dev sam:synth [options]  Synthesise the CDK app with SAM_LOCAL=true
-  dev sam:start [options]  Start LocalStack + SAM local API (synth → up → sam local)
-  dev sam:stop  [options]  Tear down LocalStack and clean up Lambda containers
+  dev sam:synth [entry] [options]  Synthesise the CDK app (optional custom entry point)
+  dev sam:start [entry] [options]  Start LocalStack + SAM local API (synth → up → sam local)
+  dev sam:stop          [options]  Tear down LocalStack and clean up Lambda containers
+
+Examples
+  dev sam:start app.sam.ts
+  dev sam:synth bin/decoupled.app.ts --dir cdk
 
 Options
   --dir <name>  CDK directory, relative to the package (default: cdk)
@@ -38,7 +42,7 @@ function parseSamArgs(argv: readonly string[]) {
       dir: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
-    allowPositionals: false,
+    allowPositionals: true,
   });
 }
 
@@ -65,7 +69,7 @@ function resolveSamCli(): string {
 }
 
 export async function runSamSynth(argv: readonly string[], context: RunContext): Promise<number> {
-  const { values } = parseSamArgs(argv);
+  const { values, positionals } = parseSamArgs(argv);
 
   if (values.help === true) {
     info(SAM_USAGE);
@@ -83,8 +87,25 @@ export async function runSamSynth(argv: readonly string[], context: RunContext):
     fail('The CDK CLI is not installed for this package.', 'Run `pnpm install` first.');
   }
 
-  step('Synthesising with SAM_LOCAL=true');
-  const result = spawnSync(cdk, ['synth', '-o', samOut], {
+  const customEntry = positionals[0];
+  const cdkArgs = ['synth', '-o', samOut];
+
+  if (customEntry) {
+    const fullEntryPath = join(context.cwd, customEntry);
+    if (!existsSync(fullEntryPath)) {
+      fail(`Entry file does not exist at: ${fullEntryPath}`);
+    }
+
+    // Use native Node TypeScript loader — no ts-node required!
+    const appCmd = `node --experimental-strip-types "${fullEntryPath}"`;
+
+    cdkArgs.push('--app', appCmd);
+    step(`Synthesising with SAM_LOCAL=true using entry file: ${customEntry}`);
+  } else {
+    step('Synthesising with SAM_LOCAL=true');
+  }
+
+  const result = spawnSync(cdk, cdkArgs, {
     cwd: target,
     stdio: 'inherit',
     env: { ...process.env, SAM_LOCAL: 'true', SAM_REPO_ROOT: context.cwd },
@@ -147,7 +168,7 @@ export async function runSamStart(argv: readonly string[], context: RunContext):
 
   const target = cdkDir(context.cwd, values.dir);
 
-  // Synth
+  // Synth (argv gets forwarded cleanly containing any entry positional args)
   const synthResult = await runSamSynth(argv, context);
   if (synthResult !== 0) return synthResult;
 
@@ -254,10 +275,10 @@ function mergeTemplates(paths: string[], outPath: string): void {
 
   for (const p of paths) {
     const tpl = JSON.parse(readFileSync(p, 'utf8')) as CfnTemplate;
-    // oxlint-disable-next-line typescript/no-non-null-assertion
-    Object.assign(merged.Resources!, tpl.Resources ?? {});
-    // oxlint-disable-next-line typescript/no-non-null-assertion
-    Object.assign(merged.Outputs!, tpl.Outputs ?? {});
+
+    if (!merged.Resources || !merged.Outputs) continue;
+    Object.assign(merged.Resources, tpl.Resources ?? {});
+    Object.assign(merged.Outputs, tpl.Outputs ?? {});
   }
 
   writeFileSync(outPath, JSON.stringify(merged, null, 2), 'utf8');

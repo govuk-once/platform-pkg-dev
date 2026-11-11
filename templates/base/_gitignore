@@ -14,9 +14,22 @@ coverage/
 .env.*
 !.env.example
 
+# .claude
+.claude/
+!.claude/settings.local.example.json
+
 # Editors
 .DS_Store
 .idea/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json{{cdkNote}}
+
+# CDK
+cdk.out/
+cdk/.aws-sam/
+cdk.context.json
+cdk/cdk.json
+
+# SAM
+.sam/
