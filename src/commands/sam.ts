@@ -88,7 +88,7 @@ export async function runSamSynth(argv: readonly string[], context: RunContext):
   }
 
   const customEntry = positionals[0];
-  const cdkArgs = ['synth', '-o', samOut];
+  const cdkArgs = ['synth', '-o', samOut, '--path-metadata', 'false'];
 
   if (customEntry) {
     const fullEntryPath = join(context.cwd, customEntry);
