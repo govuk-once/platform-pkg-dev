@@ -1,0 +1,81 @@
+
+name: Sonar Scan
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: development
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node/PNPM
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b
+        with:
+          install: false
+          runtime: node@24
+
+      - name: Configure CodeArtifact auth
+        id: code-artifact-auth
+        uses: govuk-once/platform-actions-codeartifact-login/.github/actions/codeartifact-auth@fa3a856eb7285b0624cdfdcd436ef72fbf15547c
+        with:
+          role-to-assume: ${{ vars.DEPLOYMENT_ROLE_ARN }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Run Tests
+        run: pnpm run test
+
+      - name: Verify SonarCloud authentication
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${SONAR_TOKEN}" \
+            "https://sonarcloud.io/api/authentication/validate"
+
+      - name: Run SonarQube Scan
+        id: sonar-scan
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+      - name: SonarCloud Security Findings to Jira
+        continue-on-error: true
+        if: ${{ success() && github.event_name == 'pull_request'}}
+        env:
+          SONAR_URL: https://sonarcloud.io
+          SONAR_TOKEN_PLATFORM: ${{ secrets.SONAR_TOKEN }}
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DRY_RUN: 'false'
+        run: |
+          pnpm exec tsx scripts/sonarToJira.ts
