@@ -104,7 +104,7 @@ export class SAMLocalAspect implements IAspect {
       ...[...this.collectedQueues.entries()].map(([, url]) => ({
         type: 'sqs-queue' as const,
         // oxlint-disable-next-line typescript/no-non-null-assertion
-        localName: url.split('/').pop()!,
+        localName: url.slice(url.lastIndexOf('/') + 1),
       })),
     ];
     if (resources.length === 0) return;

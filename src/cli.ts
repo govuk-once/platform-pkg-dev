@@ -16,6 +16,7 @@ import { runSync, SYNC_USAGE } from './commands/sync.js';
 import { PRE_COMMIT_USAGE, PRE_PUSH_USAGE, runPreCommit, runPrePush } from './commands/checks.js';
 import { HOOKS_USAGE, runHooks } from './commands/hooks.js';
 import { CDK_USAGE, runCdkInit } from './commands/cdk.js';
+import { CDK_APP_USAGE, runCdkApp } from './commands/cdk-app.js';
 import { SYNTH_USAGE, runSynth } from './commands/synth.js';
 import {
   ASSUME_ROLE_USAGE,
@@ -47,6 +48,7 @@ Commands
   pre-push     Run the push-stage hooks now (checkov, test)
   hooks        install / status / uninstall the .githooks wiring
   cdk:init     Scaffold the CDK app: cdk init, then platform-pkg-dev's stack on top
+  cdk:app      Bundle and run the CDK app (cdk.json's app command)
   synth        Assume the GDS role, then synthesise the CDK app
   scan         Synthesise, then run checkov over the templates
   sam:synth    Synthesise the CDK app with SAM_LOCAL=true
@@ -120,6 +122,11 @@ async function main(argv: readonly string[]): Promise<number> {
       await runInit(rest);
       return 0;
 
+    // Not routed through resolveWorkingDir: cdk runs the app from the directory
+    // holding cdk.json, and the entry is relative to that, not the package root.
+    case 'cdk:app':
+      return await runCdkApp(rest);
+
     case 'assumeRole':
     case 'codeArtifactAuthorise':
     case 'build':
@@ -185,6 +192,7 @@ async function main(argv: readonly string[]): Promise<number> {
       else if (topic === 'pre-push') info(PRE_PUSH_USAGE);
       else if (topic === 'hooks') info(HOOKS_USAGE);
       else if (topic === 'cdk:init' || topic === 'cdk') info(CDK_USAGE);
+      else if (topic === 'cdk:app') info(CDK_APP_USAGE);
       else if (topic === 'synth') info(SYNTH_USAGE);
       else if (topic === 'scan') info(SCAN_USAGE);
       else if (

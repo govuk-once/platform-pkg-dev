@@ -1,3 +1,4 @@
+/* oxlint-disable no-console -- logs show the producer → queue → consumer flow in the SAM terminal */
 import type { SQSEvent } from 'aws-lambda';
 
 export async function handler(event: SQSEvent): Promise<void> {

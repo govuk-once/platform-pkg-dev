@@ -382,7 +382,7 @@ async function scaffold(
     packageName: answers.packageName,
     team: answers.team,
     role: answers.role,
-    cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json' : '',
+    cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json\n.cdk-app-*.mjs' : '',
     codeArtifactAccount: String(CODE_ARTIFACT_ACCOUNT),
     cdkSection: answers.cdk
       ? [
@@ -536,7 +536,7 @@ async function scaffoldDetached(
     packageName: answers.packageName,
     team: answers.team,
     role: answers.role,
-    cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json' : '',
+    cdkNote: answers.cdk ? '\n\n# CDK\ncdk.out/\ncdk.context.json\n.cdk-app-*.mjs' : '',
     codeArtifactAccount: String(CODE_ARTIFACT_ACCOUNT),
     cdkSection: '',
   };

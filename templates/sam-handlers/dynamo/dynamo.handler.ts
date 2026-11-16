@@ -17,7 +17,8 @@ async function encryptSecret(id: string, secret: string): Promise<string> {
       EncryptionContext: { item: id },
     }),
   );
-  return Buffer.from(CiphertextBlob!).toString('base64');
+  if (CiphertextBlob === undefined) throw new Error('KMS Encrypt returned no ciphertext');
+  return Buffer.from(CiphertextBlob).toString('base64');
 }
 
 async function decryptSecret(id: string, ciphertext: string): Promise<string> {
@@ -27,7 +28,8 @@ async function decryptSecret(id: string, ciphertext: string): Promise<string> {
       EncryptionContext: { item: id },
     }),
   );
-  return Buffer.from(Plaintext!).toString('utf8');
+  if (Plaintext === undefined) throw new Error('KMS Decrypt returned no plaintext');
+  return Buffer.from(Plaintext).toString('utf8');
 }
 
 // Example output only: shows the stored ciphertext beside the plaintext so you can see the

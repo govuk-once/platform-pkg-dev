@@ -3,16 +3,15 @@
   // overriding only what it genuinely needs.
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    // The CDK app is executed, never compiled: `cdk synth` runs bin/app.ts
-    // through Node's type stripping, so there is no dist output to produce.
+    // The CDK app is bundled and run by `dev cdk:app`, never compiled by tsc,
+    // so there is no dist output to produce.
     "noEmit": true,
     "rootDir": ".",
-    "types": ["node"],
+    "types": ["node", "vitest/globals"],
 
-    // Node's type stripping does not rewrite import specifiers, so a relative
-    // import must name the .ts file actually on disk. Allowed here precisely
-    // because nothing is emitted from this config.
-    "allowImportingTsExtensions": true
+    // Matches how the app is actually loaded: esbuild resolves `./x.js` to x.ts.
+    "module": "preserve",
+    "moduleResolution": "bundler"
   },
   "include": ["."]
 }

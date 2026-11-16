@@ -315,6 +315,19 @@ curl http://localhost:3000/dynamo-items
 
 ## How it works
 
+The layout `dev cdk:init --sam` creates:
+
+```
+cdk/bin/app.ts                     the main app (cdk.json runs it; no SAM code)
+cdk/bin/sam.app.ts                 the local-only SAM app `dev sam:start` runs
+cdk/lib/stacks/sam/sam-*.stack.ts  the example stacks
+src/sam/*.handler.ts               their Lambda handlers
+```
+
+Both apps are run by `dev cdk:app`, which bundles the app with esbuild before
+running it. Relative imports are written the normal way, with `.js` (`'../lib/stacks/sam/sam-dsql.stack.js'`),
+and resolve to the `.ts` files.
+
 `src/` is the Lambda package: it has its own `package.json` (the handlers' runtime
 libraries, such as `pg` and the AWS SDK clients) and `tsconfig.json`, and is
 listed in `pnpm-workspace.yaml`. Add a handler dependency there, not at the root:
@@ -341,7 +354,7 @@ pnpm --filter ./src add zod
 
 ### Hot reload
 
-Edit your handler source (`src/handler.ts`, `src/producer.ts`, etc.) and hit the
+Edit your handler source (`src/sam/dynamo.handler.ts`, `src/sam/queue-producer.handler.ts`, etc.) and hit the
 endpoint again — the wrapper detects the file change and rebundles automatically.
 No restart needed.
 
@@ -357,4 +370,4 @@ out, run `dev sam:stop` then `dev sam:start` again.
 `devDependencies`. Run `dev sync` to add them.
 
 **Handler not found** — check that the `sam:source-entry` metadata on your Lambda
-matches the actual file path relative to the package root (e.g. `src/handler.ts`).
+matches the actual file path relative to the package root (e.g. `src/sam/dynamo.handler.ts`).
