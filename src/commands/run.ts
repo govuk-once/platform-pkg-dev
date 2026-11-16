@@ -72,8 +72,18 @@ export function runFormat(argv: readonly string[], context: RunContext): number 
 
 /** `dev typecheck [...]` - tsc --noEmit against the package tsconfig. */
 export function runTypecheck(argv: readonly string[], context: RunContext): number {
-  const args = argv.length > 0 ? argv : ['-p', 'tsconfig.json', '--noEmit'];
-  return runTool('typescript', args, { binName: 'tsc', cwd: context.cwd });
+  const tsc = (args: readonly string[]): number =>
+    runTool('typescript', args, { binName: 'tsc', cwd: context.cwd });
+
+  if (argv.length > 0) return tsc(argv);
+
+  // The CDK app has its own tsconfig - it is bundled, not compiled - so it is
+  // checked against that rather than the package's.
+  const root = tsc(['-p', 'tsconfig.json', '--noEmit']);
+  const cdk = existsSync(join(context.cwd, 'cdk', 'tsconfig.json'))
+    ? tsc(['-p', join('cdk', 'tsconfig.json'), '--noEmit'])
+    : 0;
+  return root !== 0 ? root : cdk;
 }
 
 /**

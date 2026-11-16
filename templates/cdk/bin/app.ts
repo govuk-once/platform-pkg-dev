@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import { App } from 'aws-cdk-lib';
-// The .ts extension is deliberate: cdk.json runs this file through Node's type
-// stripping, which resolves specifiers as written and does not rewrite them.
-import { MainStack } from '../lib/main.stack.ts';
+import { MainStack } from '../lib/main.stack.js';
 
 const app = new App();
 

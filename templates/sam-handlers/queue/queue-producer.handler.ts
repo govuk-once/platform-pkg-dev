@@ -1,3 +1,4 @@
+/* oxlint-disable no-console -- logs show the producer → queue → consumer flow in the SAM terminal */
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 

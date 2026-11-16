@@ -120,29 +120,26 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
   const samExamples = parseSamExamples(values['sam-example']);
   const vars = { packageName: packageName(context.cwd), stackId: stackId(context.cwd) };
 
-  if (values.sam !== true) {
-    const written = await renderTemplateDir('cdk', target, vars, { force: true });
-    for (const file of written.written.toSorted()) ok(join(name, file));
-  } else {
-    // tsconfig is the same across all SAM templates — take it from the first
-    const written = await renderTemplateDir(`cdk-sam-${samExamples[0]}`, target, vars, {
-      force: true,
-      skip: samExamples.length > 1 ? ['lib/main.stack.ts'] : [],
-    });
-    for (const file of written.written.toSorted()) ok(join(name, file));
+  // The main app is the same with or without SAM: bin/app.ts and lib/main.stack.ts,
+  // with no SAM code in them. SAM gets an app of its own, bin/sam.app.ts.
+  const written = await renderTemplateDir('cdk', target, vars, { force: true });
+  for (const file of written.written.toSorted()) ok(join(name, file));
 
-    // Render each example's stack and handlers
+  if (values.sam === true) {
+    const stacksDir = join('lib', 'stacks', 'sam');
+    await mkdir(join(target, stacksDir), { recursive: true });
+
     for (const ex of samExamples) {
-      const stackSrc = join(TEMPLATES_ROOT, `cdk-sam-${ex}`, 'lib', 'main.stack.ts');
-      const stackName = samExamples.length === 1 ? 'main.stack.ts' : `${ex}.stack.ts`;
-      const stackDest = join(target, 'lib', stackName);
-      const content = substitute(await readFileAsync(stackSrc, 'utf8'), vars);
-      await mkdir(join(target, 'lib'), { recursive: true });
-      await writeFile(stackDest, content, 'utf8');
-      ok(join(name, 'lib', stackName));
+      const stackFile = SAM_STACKS[ex].file;
+      const content = substitute(
+        await readFileAsync(join(TEMPLATES_ROOT, 'sam-stacks', stackFile), 'utf8'),
+        vars,
+      );
+      await writeFile(join(target, stacksDir, stackFile), content, 'utf8');
+      ok(join(name, stacksDir, stackFile));
 
-      // Every example stack points sam:source-entry at src/<example>/.
-      const handlerDir = join(FUNCTIONS_DIR, ex);
+      // Every example stack points sam:source-entry at src/sam/.
+      const handlerDir = join(FUNCTIONS_DIR, 'sam');
       const handlerWritten = await renderTemplateDir(
         `sam-handlers/${ex}`,
         join(context.cwd, handlerDir),
@@ -154,17 +151,14 @@ export async function runCdkInit(argv: readonly string[], context: RunContext): 
         info(dim(`  skipped ${handlerDir}/${file} (exists)`));
     }
 
-    // When multiple examples, rewrite app.ts to import all stacks
-    if (samExamples.length > 1) {
-      const sid = stackId(context.cwd);
-      await writeFile(join(target, 'bin', 'app.ts'), buildMultiStackApp(samExamples, sid), 'utf8');
-    }
+    await writeFile(join(target, 'bin', 'sam.app.ts'), buildSamApp(samExamples), 'utf8');
+    ok(join(name, 'bin', 'sam.app.ts'));
 
     await scaffoldFunctionsPackage(context.cwd, samExamples);
   }
 
-  await pointAppAtTypeStripping(target);
-  ok(`${join(name, 'cdk.json')} app -> node bin/app.ts`);
+  const app = await pointAppAtBundler(target, context.cwd);
+  ok(`${join(name, 'cdk.json')} app -> ${app}`);
 
   // cdk init's output and the cdk.json rewrite land after `dev init` formatted the
   // package, so format them here or the first commit fails the format hook.
@@ -233,19 +227,22 @@ async function pruneAndReport(target: string): Promise<number> {
 }
 
 /**
- * Replaces cdk init's `npx tsc && npx tsx` with Node's own type stripping.
+ * Replaces cdk init's `npx tsc && npx tsx` with `dev cdk:app`, which bundles the
+ * app with esbuild and runs it. Unlike plain `node bin/app.ts`, that lets relative
+ * imports be written the normal way - no extension, or .js - in every file.
  *
- * Node 24 runs TypeScript directly, so the app needs no compile step and no
- * extra runtime dependency - which is the whole reason this toolchain has no
- * tsup, esbuild or tsx in it.
+ * The binary is named by its path, not via npx or pnpm exec: cdk runs the app
+ * from the CDK directory, which has no package.json of its own.
  */
-async function pointAppAtTypeStripping(target: string): Promise<void> {
+async function pointAppAtBundler(target: string, packageRoot: string): Promise<string> {
   const path = join(target, 'cdk.json');
   const config = JSON.parse(await readFileAsync(path, 'utf8')) as Record<string, unknown>;
 
-  config['app'] = 'node bin/app.ts';
+  const app = `${relative(target, join(packageRoot, 'node_modules', '.bin', 'dev'))} cdk:app`;
+  config['app'] = app;
 
   await writeFile(path, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  return app;
 }
 
 function packageName(cwd: string): string {
@@ -271,10 +268,11 @@ function stackId(cwd: string): string {
   return `${pascal === '' ? 'Main' : pascal}MainStack`;
 }
 
-const STACK_CLASS: Record<string, string> = {
-  dsql: 'DsqlStack',
-  dynamo: 'DynamoStack',
-  queue: 'QueueStack',
+/** Each example's stack template (in templates/sam-stacks), class name and stack id. */
+const SAM_STACKS: Readonly<Record<SamExample, { file: string; cls: string; id: string }>> = {
+  dsql: { file: 'sam-dsql.stack.ts', cls: 'SAMDSQLStack', id: 'SAMDsqlStack' },
+  dynamo: { file: 'sam-dynamo-db.stack.ts', cls: 'SAMDynamoDBStack', id: 'SAMDynamoStack' },
+  queue: { file: 'sam-queue.stack.ts', cls: 'SAMQueueStack', id: 'SAMQueueStack' },
 };
 
 function parseSamExamples(flag: string | undefined): SamExample[] {
@@ -324,30 +322,24 @@ async function scaffoldFunctionsPackage(
   }
 }
 
-function buildMultiStackApp(examples: readonly string[], baseStackId: string): string {
+/** bin/sam.app.ts: the local-only app `dev sam:start` runs. Deploys use bin/app.ts. */
+function buildSamApp(examples: readonly SamExample[]): string {
   const imports = examples
     .map((ex) => {
-      const cls = STACK_CLASS[ex] ?? 'MainStack';
-      return `import { MainStack as ${cls} } from '../lib/${ex}.stack.ts';`;
+      const { cls, file } = SAM_STACKS[ex];
+      return `import { ${cls} } from '../lib/stacks/sam/${file.replace(/\.ts$/, '.js')}';`;
     })
     .join('\n');
 
   const stacks = examples
-    .map((ex) => {
-      const cls = STACK_CLASS[ex] ?? 'MainStack';
-      const suffix = ex.charAt(0).toUpperCase() + ex.slice(1);
-      return `new ${cls}(app, '${baseStackId.replace(/Stack$/, '')}${suffix}Stack', {\n  env: { ...(account === undefined ? {} : { account }), region },\n});`;
-    })
+    .map((ex) => `new ${SAM_STACKS[ex].cls}(app, '${SAM_STACKS[ex].id}');`)
     .join('\n\n');
 
-  return `#!/usr/bin/env node
-import { App, Aspects } from 'aws-cdk-lib';
+  return `import { App, Aspects } from 'aws-cdk-lib';
+
 ${imports}
 
 const app = new App();
-
-const account = process.env['CDK_DEFAULT_ACCOUNT'];
-const region = process.env['CDK_DEFAULT_REGION'] ?? 'eu-west-2';
 
 ${stacks}
 
