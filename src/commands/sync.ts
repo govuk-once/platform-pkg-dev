@@ -14,6 +14,7 @@ import { installDependencies } from '../lib/install.js';
 import { packageDirWithinRepo } from '../lib/git.js';
 import { latestVersion, versionSource } from '../lib/registry.js';
 import { isNewer, isRegistrySpec } from '../lib/semver.js';
+import { isCI } from '../lib/ci.js';
 import { isBuildStale, pkgDevRoot } from '../lib/staleness.js';
 import {
   applyWorkspaceSettings,
@@ -78,6 +79,15 @@ export async function runSync(argv: readonly string[], context: RunContext): Pro
     return 0;
   }
 
+  // A pipeline only reports drift: an upgrade or a rewrite there would build
+  // versions nobody committed.
+  const check = values.check === true || isCI();
+  if (isCI() && values.check !== true) {
+    warn(
+      'CI detected - running as `dev sync --check`; a pipeline never changes versions or files.',
+    );
+  }
+
   const nodeMajor = Number.parseInt(process.versions.node.split('.')[0] ?? '0', 10);
   if (nodeMajor < NODE_MAJOR) {
     fail(
@@ -115,14 +125,14 @@ export async function runSync(argv: readonly string[], context: RunContext): Pro
   // CodeArtifact before any pnpm install — the private registry returns 401/404
   // without a valid token in ~/.npmrc.  Skipped for --check (read-only) and
   // --no-install (nothing to authenticate for).
-  if (values.check !== true && values['no-install'] !== true) {
+  if (!check && values['no-install'] !== true) {
     ensureCodeArtifactAuth(context.cwd, { role: values.role, env: values.env });
   }
 
   // Upgrading without installing would leave package.json claiming a version
   // that is not on disk, so --no-install disables the check rather than doing
   // half of it.
-  if (values.check !== true && values['no-upgrade'] !== true && values['no-install'] !== true) {
+  if (!check && values['no-upgrade'] !== true && values['no-install'] !== true) {
     const upgraded = await upgradePkgDev(manifest, manifestPath, context.cwd, raw);
     if (upgraded !== undefined) return upgraded;
   }
@@ -190,7 +200,7 @@ export async function runSync(argv: readonly string[], context: RunContext): Pro
     return 0;
   }
 
-  if (values.check === true) {
+  if (check) {
     error('This package has drifted from platform-pkg-dev:');
     for (const change of drift) process.stderr.write(`  ${describeDrift(change)}\n`);
     for (const file of stale) process.stderr.write(`  ~ ${file.path}\n`);

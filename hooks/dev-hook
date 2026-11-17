@@ -10,6 +10,18 @@ set -eu
 HOOK="${1:?platform-pkg-dev: hook type required}"
 shift
 
+# A commit or push made by a pipeline skips the hook. It would auto-run `dev sync`
+# (rewriting and staging files in a machine commit), needs commit signing and a
+# generated .pre-commit-config.yaml that a CI checkout does not have. Pipelines
+# run `dev pre-commit` / `dev pre-push` as explicit steps; those only check.
+case "${CI:-}" in
+  '' | false | 0) ;;
+  *)
+    echo "platform-pkg-dev: CI detected - $HOOK hook skipped. Run \`dev $HOOK\` as a pipeline step instead." >&2
+    exit 0
+    ;;
+esac
+
 # git runs hooks from the repository root, which in a monorepo is above the
 # package - and is where pre-commit would otherwise look for the config.
 cd "${DEV_PACKAGE_DIR:-.}"

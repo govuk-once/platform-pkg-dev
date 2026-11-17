@@ -17,6 +17,15 @@ if (existsSync(hooksDir)) {
   }
 }
 
+// Skip the rest in a pipeline: git hooks never run there, so wiring
+// core.hooksPath and commit.gpgsign and downloading every hook environment is
+// minutes of network work for nothing. Pipelines run `dev pre-commit` /
+// `dev pre-push` as explicit steps instead.
+const ci = process.env.CI;
+if (ci !== undefined && ci !== '' && ci !== 'false' && ci !== '0') {
+  process.exit(0);
+}
+
 // 2. Skip if .githooks hasn't been scaffolded yet
 const cwd = process.env.INIT_CWD || process.cwd();
 if (!existsSync(join(cwd, '.githooks'))) {

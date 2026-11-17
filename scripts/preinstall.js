@@ -3,6 +3,13 @@ import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+// 1. Skip in a pipeline: it authenticates itself (e.g. an OIDC role and
+// CodeArtifact login step) and has no gds-cli to assume a role with.
+const ci = process.env.CI;
+if (ci !== undefined && ci !== '' && ci !== 'false' && ci !== '0') {
+  process.exit(0);
+}
+
 // 2. Skip if .githooks hasn't been scaffolded yet
 const cwd = process.env.INIT_CWD || process.cwd();
 if (!existsSync(join(cwd, '.githooks'))) {

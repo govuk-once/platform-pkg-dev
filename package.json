@@ -1,6 +1,6 @@
 {
   "name": "@govuk-connect/dev",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "Core development tooling for the Connect platform. Provides the `dev` CLI: owns TypeScript, Vitest and oxlint versions, scaffolds new packages via `dev init`, and runs the toolchain via wrapper commands.",
   "license": "MIT",
   "bin": {
@@ -50,7 +50,7 @@
     "format": "oxfmt",
     "pre-commit": "pnpm build && DEV_BIN=./dist/cli.js ./hooks/dev-hook pre-commit",
     "pre-push": "PRE_COMMIT=\"./node_modules/.bin/pre-commit\"; [ -x \"$PRE_COMMIT\" ] || PRE_COMMIT=pre-commit; \"$PRE_COMMIT\" run --hook-stage pre-push --all-files",
-    "prepare": "pnpm run build && ./hooks/setup-git-config && node dist/cli.js hooks install 2>/dev/null || true",
+    "prepare": "pnpm run build && { [ -n \"${CI:-}\" ] && [ \"$CI\" != false ] && [ \"$CI\" != 0 ] || { ./hooks/setup-git-config && node dist/cli.js hooks install 2>/dev/null; } || true; }",
     "prepublishOnly": "pnpm run build",
     "pretest": "pnpm build",
     "preinstall": "node scripts/preinstall.js",
