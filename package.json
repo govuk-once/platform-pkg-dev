@@ -84,7 +84,8 @@
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "4.1.10",
     "aws-cdk": "2.1136.0",
-    "oxlint-tsgolint": "7.0.2001"
+    "oxlint-tsgolint": "7.0.2001",
+    "tsx": "4.23.15"
   },
   "engines": {
     "node": ">=24"
