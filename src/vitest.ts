@@ -12,7 +12,7 @@ const BASE: ViteUserConfig = defineConfig({
     // Both layouts, because packages differ: platform-pkg-dev keeps tests beside the
     // source, while a published package usually keeps them in test/.
     include: ['src/**/*.{test,spec}.ts', 'test/**/*.{test,spec}.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/cdk.out/**', '**/coverage/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/docs/**', '**/cdk.out/**', '**/coverage/**'],
 
     // Explicit imports rather than globals: a test file that imports `expect`
     // is one the type checker and the editor can follow.
