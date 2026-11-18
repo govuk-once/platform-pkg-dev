@@ -24,7 +24,7 @@
     "no-new": "off",
     "no-underscore-dangle": "off"
   },
-  "ignorePatterns": ["dist/**", "node_modules/**", "cdk.out/**", "coverage/**"],
+  "ignorePatterns": ["dist/**", "docs/**", "node_modules/**", "cdk.out/**", "coverage/**"],
   "overrides": [
     {
       "files": ["**/*.test.ts", "**/*.spec.ts"],

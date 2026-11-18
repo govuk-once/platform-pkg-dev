@@ -1,7 +1,7 @@
 // cspell:words govuk Workstream customfield workstream epss apos remediat issuetype duedate
-import { createHash } from "node:crypto";
+import { createHash } from 'node:crypto';
 
-type SonarSeverity = "BLOCKER" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
+type SonarSeverity = 'BLOCKER' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
 
 type SonarLocation = {
   component?: string;
@@ -86,80 +86,73 @@ function required(name: string): string {
   return value;
 }
 
-const sonarUrl = required("SONAR_URL").replace(/\/$/, "");
-const sonarToken = required("SONAR_TOKEN_PLATFORM");
+const sonarUrl = required('SONAR_URL').replace(/\/$/, '');
+const sonarToken = required('SONAR_TOKEN_PLATFORM');
 
-const jiraUrl = required("JIRA_URL").replace(/\/$/, "");
-const jiraEmail = required("JIRA_EMAIL");
-const jiraToken = required("JIRA_API_TOKEN");
+const jiraUrl = required('JIRA_URL').replace(/\/$/, '');
+const jiraEmail = required('JIRA_EMAIL');
+const jiraToken = required('JIRA_API_TOKEN');
 
-const organization = "govuk-once";
-const sonarProject = "govuk-once_platform-pkg-tag";
-const jiraProject = "GUV";
+const organization = 'govuk-once';
+const sonarProject = 'govuk-once_platform-pkg-tag';
+const jiraProject = 'GUV';
 
-const prNumber = required("PR_NUMBER");
+const prNumber = required('PR_NUMBER');
 
 if (!/^\d+$/.test(prNumber)) {
-  throw new Error("PR_NUMBER must be a valid pull request number");
+  throw new Error('PR_NUMBER must be a valid pull request number');
 }
 
-const dryRun = process.env.DRY_RUN !== "false";
+const dryRun = process.env.DRY_RUN !== 'false';
 const maxTickets = 5;
 
-const jiraEnvironment = "Staging";
-const stakeholderName = "Jack Pennington";
-const jiraWorkstreamOptionId = "10232";
+const jiraEnvironment = 'Staging';
+const stakeholderName = 'Jack Pennington';
+const jiraWorkstreamOptionId = '10232';
 
-const stakeholderAccountIdOverride =
-  process.env.JIRA_STAKEHOLDER_ACCOUNT_ID?.trim();
+const stakeholderAccountIdOverride = process.env.JIRA_STAKEHOLDER_ACCOUNT_ID?.trim();
 
 const jiraFields = {
-  source: "customfield_10545",
-  severity: "customfield_10546",
-  stakeholders: "customfield_10547",
-  workstream: "customfield_10847",
-  impact: "customfield_10004",
-  cvss: "customfield_10512",
-  epss: "customfield_10479",
-  exceptionReviewDate: "customfield_10580",
-  environment: "environment",
+  source: 'customfield_10545',
+  severity: 'customfield_10546',
+  stakeholders: 'customfield_10547',
+  workstream: 'customfield_10847',
+  impact: 'customfield_10004',
+  cvss: 'customfield_10512',
+  epss: 'customfield_10479',
+  exceptionReviewDate: 'customfield_10580',
+  environment: 'environment',
 } as const;
 
 const severityMappings: Record<SonarSeverity, SeverityMapping> = {
   BLOCKER: {
-    label: "Critical",
-    optionId: "10138",
-    priorityId: "1",
+    label: 'Critical',
+    optionId: '10138',
+    priorityId: '1',
   },
   HIGH: {
-    label: "High",
-    optionId: "10137",
-    priorityId: "2",
+    label: 'High',
+    optionId: '10137',
+    priorityId: '2',
   },
   MEDIUM: {
-    label: "Medium",
-    optionId: "10136",
-    priorityId: "3",
+    label: 'Medium',
+    optionId: '10136',
+    priorityId: '3',
   },
   LOW: {
-    label: "Low",
-    optionId: "10135",
-    priorityId: "4",
+    label: 'Low',
+    optionId: '10135',
+    priorityId: '4',
   },
   INFO: {
-    label: "Informational",
-    optionId: "10134",
-    priorityId: "5",
+    label: 'Informational',
+    optionId: '10134',
+    priorityId: '5',
   },
 };
 
-const severityOrder: SonarSeverity[] = [
-  "BLOCKER",
-  "HIGH",
-  "MEDIUM",
-  "LOW",
-  "INFO",
-];
+const severityOrder: SonarSeverity[] = ['BLOCKER', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
 
 // Calendar-day remediation defaults from VM guidance.
 const remediationDays: Partial<Record<SonarSeverity, number>> = {
@@ -169,12 +162,9 @@ const remediationDays: Partial<Record<SonarSeverity, number>> = {
   LOW: 30,
 };
 
-const jiraAuth = Buffer.from(`${jiraEmail}:${jiraToken}`).toString("base64");
+const jiraAuth = Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64');
 
-function calculateDueDate(
-  severity: SonarSeverity,
-  detectionDate?: string,
-): string | undefined {
+function calculateDueDate(severity: SonarSeverity, detectionDate?: string): string | undefined {
   const days = remediationDays[severity];
 
   if (days === undefined) {
@@ -184,9 +174,7 @@ function calculateDueDate(
   const detected = detectionDate ? new Date(detectionDate) : new Date();
 
   if (Number.isNaN(detected.getTime())) {
-    throw new Error(
-      `Invalid SonarCloud detection date: ${String(detectionDate)}`,
-    );
+    throw new Error(`Invalid SonarCloud detection date: ${String(detectionDate)}`);
   }
 
   const due = new Date(detected);
@@ -197,19 +185,16 @@ function calculateDueDate(
 }
 
 function validateExecution(): void {
-  if (process.env.GITHUB_ACTIONS !== "true") {
+  if (process.env.GITHUB_ACTIONS !== 'true') {
     return;
   }
 
-  if (process.env.GITHUB_EVENT_NAME !== "pull_request") {
-    throw new Error("Jira integration must run on a pull request");
+  if (process.env.GITHUB_EVENT_NAME !== 'pull_request') {
+    throw new Error('Jira integration must run on a pull request');
   }
 }
 
-async function sonarGet<T>(
-  path: string,
-  params: Record<string, string>,
-): Promise<T> {
+async function sonarGet<T>(path: string, params: Record<string, string>): Promise<T> {
   const url = new URL(path, `${sonarUrl}/`);
 
   for (const [key, value] of Object.entries(params)) {
@@ -219,28 +204,23 @@ async function sonarGet<T>(
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${sonarToken}`,
-      Accept: "application/json",
+      Accept: 'application/json',
     },
   });
 
   if (!response.ok) {
-    throw new Error(
-      `SonarCloud ${path} HTTP ${String(response.status)}: ${await response.text()}`,
-    );
+    throw new Error(`SonarCloud ${path} HTTP ${String(response.status)}: ${await response.text()}`);
   }
 
   return (await response.json()) as T;
 }
 
-async function jiraRequest(
-  path: string,
-  options: RequestInit = {},
-): Promise<Response> {
+async function jiraRequest(path: string, options: RequestInit = {}): Promise<Response> {
   const headers = new Headers(options.headers);
 
-  headers.set("Authorization", `Basic ${jiraAuth}`);
-  headers.set("Accept", "application/json");
-  headers.set("Content-Type", "application/json");
+  headers.set('Authorization', `Basic ${jiraAuth}`);
+  headers.set('Accept', 'application/json');
+  headers.set('Content-Type', 'application/json');
 
   const response = await fetch(`${jiraUrl}${path}`, {
     ...options,
@@ -248,9 +228,7 @@ async function jiraRequest(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Jira HTTP ${String(response.status)}: ${await response.text()}`,
-    );
+    throw new Error(`Jira HTTP ${String(response.status)}: ${await response.text()}`);
   }
 
   return response;
@@ -258,16 +236,16 @@ async function jiraRequest(
 
 async function resolveStakeholderAccountId(): Promise<string> {
   if (stakeholderAccountIdOverride) {
-    console.log("Using configured Jira stakeholder account ID");
+    console.log('Using configured Jira stakeholder account ID');
 
     return stakeholderAccountIdOverride;
   }
 
-  const url = new URL("/rest/api/3/user/search", `${jiraUrl}/`);
+  const url = new URL('/rest/api/3/user/search', `${jiraUrl}/`);
 
-  url.searchParams.set("query", stakeholderName);
+  url.searchParams.set('query', stakeholderName);
 
-  url.searchParams.set("maxResults", "100");
+  url.searchParams.set('maxResults', '100');
 
   const response = await jiraRequest(`${url.pathname}${url.search}`);
 
@@ -275,24 +253,23 @@ async function resolveStakeholderAccountId(): Promise<string> {
 
   const matches = users.filter(
     (user) =>
-      user.displayName?.trim().toLowerCase() ===
-        stakeholderName.toLowerCase() &&
+      user.displayName?.trim().toLowerCase() === stakeholderName.toLowerCase() &&
       user.active !== false &&
-      user.accountType !== "app",
+      user.accountType !== 'app',
   );
 
   if (matches.length === 0) {
     throw new Error(
       `Could not resolve Jira stakeholder "${stakeholderName}". ` +
-        "Check Jira user-search permissions or configure " +
-        "JIRA_STAKEHOLDER_ACCOUNT_ID.",
+        'Check Jira user-search permissions or configure ' +
+        'JIRA_STAKEHOLDER_ACCOUNT_ID.',
     );
   }
 
   if (matches.length > 1) {
     throw new Error(
       `Multiple Jira users match "${stakeholderName}". ` +
-        "Configure JIRA_STAKEHOLDER_ACCOUNT_ID to select the correct account.",
+        'Configure JIRA_STAKEHOLDER_ACCOUNT_ID to select the correct account.',
     );
   }
 
@@ -314,13 +291,13 @@ async function getFindings(): Promise<SonarIssue[]> {
   let more = true;
 
   while (more) {
-    const data = await sonarGet<SonarSearch>("/api/issues/search", {
+    const data = await sonarGet<SonarSearch>('/api/issues/search', {
       organization,
       componentKeys: sonarProject,
-      impactSoftwareQualities: "SECURITY",
-      impactSeverities: "HIGH,BLOCKER",
+      impactSoftwareQualities: 'SECURITY',
+      impactSeverities: 'HIGH,BLOCKER',
       pullRequest: prNumber,
-      ps: "100",
+      ps: '100',
       p: String(page),
     });
 
@@ -336,15 +313,15 @@ async function getFindings(): Promise<SonarIssue[]> {
 
 function plainText(value: string): string {
   return value
-    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
-    .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&apos;/g, "'")
-    .replace(/&amp;/g, "&")
+    .replace(/&amp;/g, '&')
     .trim();
 }
 
@@ -352,7 +329,7 @@ async function getRuleDetails(ruleKey: string): Promise<{
   name: string;
   remediation: string;
 }> {
-  const data = await sonarGet<RuleDetails>("/api/rules/show", {
+  const data = await sonarGet<RuleDetails>('/api/rules/show', {
     key: ruleKey,
     organization,
   });
@@ -364,25 +341,25 @@ async function getRuleDetails(ruleKey: string): Promise<{
   const sections = data.rule.descriptionSections ?? [];
 
   const fixSections = sections.filter((section) =>
-    /fix|solution|remediat/i.test(section.key ?? ""),
+    /fix|solution|remediat/i.test(section.key ?? ''),
   );
 
   const remediation = fixSections
-    .map((section) => plainText(section.content ?? section.htmlContent ?? ""))
+    .map((section) => plainText(section.content ?? section.htmlContent ?? ''))
     .filter((value) => value.length > 0)
-    .join("\n\n");
+    .join('\n\n');
 
   return {
     name: data.rule.name ?? ruleKey,
     remediation:
       remediation ||
-      "Rule-specific remediation was not returned by the API. Review the SonarCloud rule guidance before remediation.",
+      'Rule-specific remediation was not returned by the API. Review the SonarCloud rule guidance before remediation.',
   };
 }
 
 function getSeverity(issue: SonarIssue): SonarSeverity {
   const securityImpacts = (issue.impacts ?? [])
-    .filter((impact) => impact.softwareQuality === "SECURITY")
+    .filter((impact) => impact.softwareQuality === 'SECURITY')
     .map((impact) => impact.severity);
 
   for (const severity of severityOrder) {
@@ -399,15 +376,15 @@ function jiraSeverity(severity: SonarSeverity): SeverityMapping {
 }
 
 function locationText(location: SonarLocation): string {
-  const file = location.component ?? "Unknown file";
+  const file = location.component ?? 'Unknown file';
 
   const line = location.textRange?.startLine;
 
   return [
     file,
-    line === undefined ? "" : `:${String(line)}`,
-    location.msg ? ` - ${location.msg}` : "",
-  ].join("");
+    line === undefined ? '' : `:${String(line)}`,
+    location.msg ? ` - ${location.msg}` : '',
+  ].join('');
 }
 
 function trace(issue: SonarIssue): {
@@ -415,9 +392,7 @@ function trace(issue: SonarIssue): {
   sink: string;
   flow: string[];
 } {
-  const locations = issue.flows?.find(
-    (flow) => (flow.locations?.length ?? 0) >= 2,
-  )?.locations;
+  const locations = issue.flows?.find((flow) => (flow.locations?.length ?? 0) >= 2)?.locations;
 
   const firstLocation = locations?.[0];
   const lastLocation = locations?.at(-1);
@@ -430,13 +405,12 @@ function trace(issue: SonarIssue): {
     };
   }
 
-  const primary = [
-    issue.component,
-    issue.line === undefined ? "" : `:${String(issue.line)}`,
-  ].join("");
+  const primary = [issue.component, issue.line === undefined ? '' : `:${String(issue.line)}`].join(
+    '',
+  );
 
   return {
-    source: "Source-to-sink trace not supplied for this finding",
+    source: 'Source-to-sink trace not supplied for this finding',
     sink: `Primary finding location (not a verified sink): ${primary}`,
     flow: [],
   };
@@ -445,10 +419,7 @@ function trace(issue: SonarIssue): {
 function issueLabel(key: string): string {
   const identifier = `${sonarProject}:${key}`;
 
-  const hash = createHash("sha256")
-    .update(identifier)
-    .digest("hex")
-    .slice(0, 24);
+  const hash = createHash('sha256').update(identifier).digest('hex').slice(0, 24);
 
   return `sonar-${hash}`;
 }
@@ -457,28 +428,23 @@ async function existingTicket(label: string): Promise<string | undefined> {
   let nextPageToken: string | undefined;
 
   do {
-    const url = new URL("/rest/api/3/search/jql", `${jiraUrl}/`);
+    const url = new URL('/rest/api/3/search/jql', `${jiraUrl}/`);
 
-    url.searchParams.set(
-      "jql",
-      `project = ${jiraProject} AND labels = "${label}"`,
-    );
+    url.searchParams.set('jql', `project = ${jiraProject} AND labels = "${label}"`);
 
-    url.searchParams.set("fields", "labels");
+    url.searchParams.set('fields', 'labels');
 
-    url.searchParams.set("maxResults", "100");
+    url.searchParams.set('maxResults', '100');
 
     if (nextPageToken) {
-      url.searchParams.set("nextPageToken", nextPageToken);
+      url.searchParams.set('nextPageToken', nextPageToken);
     }
 
     const response = await jiraRequest(`${url.pathname}${url.search}`);
 
     const data = (await response.json()) as JiraSearch;
 
-    const existing = data.issues.find((item) =>
-      item.fields?.labels?.includes(label),
-    )?.key;
+    const existing = data.issues.find((item) => item.fields?.labels?.includes(label))?.key;
 
     if (existing) {
       return existing;
@@ -492,11 +458,11 @@ async function existingTicket(label: string): Promise<string | undefined> {
 
 function paragraph(value: string): AdfNode {
   return {
-    type: "paragraph",
+    type: 'paragraph',
     content: [
       {
-        type: "text",
-        text: value.slice(0, 12000) || " ",
+        type: 'text',
+        text: value.slice(0, 12000) || ' ',
       },
     ],
   };
@@ -504,13 +470,13 @@ function paragraph(value: string): AdfNode {
 
 function heading(value: string): AdfNode {
   return {
-    type: "heading",
+    type: 'heading',
     attrs: {
       level: 3,
     },
     content: [
       {
-        type: "text",
+        type: 'text',
         text: value,
       },
     ],
@@ -519,10 +485,10 @@ function heading(value: string): AdfNode {
 
 function bullet(value: string): AdfNode {
   return {
-    type: "bulletList",
+    type: 'bulletList',
     content: [
       {
-        type: "listItem",
+        type: 'listItem',
         content: [paragraph(value)],
       },
     ],
@@ -531,7 +497,7 @@ function bullet(value: string): AdfNode {
 
 function divider(): AdfNode {
   return {
-    type: "rule",
+    type: 'rule',
   };
 }
 
@@ -544,12 +510,12 @@ function requiredRule(issue: SonarIssue): string {
 }
 
 function findingUrl(issue: SonarIssue): string {
-  const url = new URL("/project/issues", `${sonarUrl}/`);
+  const url = new URL('/project/issues', `${sonarUrl}/`);
 
-  url.searchParams.set("id", sonarProject);
+  url.searchParams.set('id', sonarProject);
 
-  url.searchParams.set("issues", issue.key);
-  url.searchParams.set("pullRequest", prNumber);
+  url.searchParams.set('issues', issue.key);
+  url.searchParams.set('pullRequest', prNumber);
 
   return url.toString();
 }
@@ -570,23 +536,23 @@ function createDescription(
   const ruleKey = requiredRule(issue);
 
   const content: AdfNode[] = [
-    heading("SOURCE"),
+    heading('SOURCE'),
     bullet(traced.source),
 
     paragraph(`Scanner: SonarCloud SAST | Project: ${sonarProject}`),
 
     divider(),
 
-    heading("SINK"),
+    heading('SINK'),
     bullet(traced.sink),
 
     ...(traced.flow.length > 0
-      ? [paragraph(`Reported execution flow: ${traced.flow.join(" -> ")}`)]
+      ? [paragraph(`Reported execution flow: ${traced.flow.join(' -> ')}`)]
       : []),
 
     divider(),
 
-    heading("Vulnerability Summary"),
+    heading('Vulnerability Summary'),
 
     paragraph(`Severity: ${severity.label} | Type: ${rule.name} (${ruleKey})`),
 
@@ -594,7 +560,7 @@ function createDescription(
 
     divider(),
 
-    heading("Details"),
+    heading('Details'),
 
     paragraph(`SonarCloud issue: ${issue.key}`),
 
@@ -602,31 +568,25 @@ function createDescription(
 
     paragraph(`Finding URL: ${findingUrl(issue)}`),
 
-    ...(issue.creationDate
-      ? [paragraph(`First detected: ${issue.creationDate}`)]
-      : []),
+    ...(issue.creationDate ? [paragraph(`First detected: ${issue.creationDate}`)] : []),
 
     divider(),
 
-    heading("Proposed Remediation"),
+    heading('Proposed Remediation'),
 
     paragraph(rule.remediation),
 
-    paragraph(
-      "Review the full rule guidance in SonarCloud before implementing the remediation.",
-    ),
+    paragraph('Review the full rule guidance in SonarCloud before implementing the remediation.'),
 
     divider(),
 
-    heading("DEFINITION OF DONE"),
+    heading('DEFINITION OF DONE'),
 
-    paragraph(
-      "Finding remediated and verified according to the vulnerability management process.",
-    ),
+    paragraph('Finding remediated and verified according to the vulnerability management process.'),
   ];
 
   return {
-    type: "doc",
+    type: 'doc',
     version: 1,
     content,
   };
@@ -638,14 +598,14 @@ function environmentAdf(value: string): {
   content: AdfNode[];
 } {
   return {
-    type: "doc",
+    type: 'doc',
     version: 1,
     content: [
       {
-        type: "paragraph",
+        type: 'paragraph',
         content: [
           {
-            type: "text",
+            type: 'text',
             text: value,
           },
         ],
@@ -654,10 +614,7 @@ function environmentAdf(value: string): {
   };
 }
 
-async function createTicket(
-  issue: SonarIssue,
-  stakeholderAccountId: string,
-): Promise<string> {
+async function createTicket(issue: SonarIssue, stakeholderAccountId: string): Promise<string> {
   const ruleKey = requiredRule(issue);
 
   const severity = getSeverity(issue);
@@ -667,10 +624,9 @@ async function createTicket(
 
   const rule = await getRuleDetails(ruleKey);
 
-  const labels = ["automated", issueLabel(issue.key)];
+  const labels = ['automated', issueLabel(issue.key)];
 
-  const summary =
-    `[SonarCloud][${mappedSeverity.label}] ${issue.message}`.slice(0, 255);
+  const summary = `[SonarCloud][${mappedSeverity.label}] ${issue.message}`.slice(0, 255);
 
   const description = createDescription(issue, rule, mappedSeverity);
 
@@ -680,14 +636,14 @@ async function createTicket(
     },
 
     issuetype: {
-      name: "Task",
+      name: 'Task',
     },
 
     summary,
     labels,
     description,
 
-    [jiraFields.source]: "SonarCloud SAST",
+    [jiraFields.source]: 'SonarCloud SAST',
 
     [jiraFields.severity]: {
       id: mappedSeverity.optionId,
@@ -721,8 +677,8 @@ async function createTicket(
   // Exception review date requires approval.
   // Issue security must be verified before production.
 
-  const response = await jiraRequest("/rest/api/3/issue", {
-    method: "POST",
+  const response = await jiraRequest('/rest/api/3/issue', {
+    method: 'POST',
     body: JSON.stringify({
       fields,
     }),
@@ -736,9 +692,7 @@ async function createTicket(
 async function runProduction(): Promise<void> {
   const findings = await getFindings();
 
-  console.log(
-    `Found ${String(findings.length)} HIGH/BLOCKER security findings on PR #${prNumber}`,
-  );
+  console.log(`Found ${String(findings.length)} HIGH/BLOCKER security findings on PR #${prNumber}`);
 
   let created = 0;
   let stakeholderAccountId: string | undefined;
@@ -768,23 +722,19 @@ async function runProduction(): Promise<void> {
 
     if (dryRun) {
       console.log(
-        `[DRY RUN] Would create ${mappedSeverity.label} ticket for ${issue.key} | Environment: ${jiraEnvironment} | Stakeholder: ${stakeholderName} | Due: ${dueDate ?? "N/A"}`,
+        `[DRY RUN] Would create ${mappedSeverity.label} ticket for ${issue.key} | Environment: ${jiraEnvironment} | Stakeholder: ${stakeholderName} | Due: ${dueDate ?? 'N/A'}`,
       );
       continue;
     }
 
     const key = await createTicket(issue, stakeholderAccountId);
 
-    console.log(
-      `Created ${jiraUrl}/browse/${key} for ${issue.key} | Due: ${dueDate ?? "N/A"}`,
-    );
+    console.log(`Created ${jiraUrl}/browse/${key} for ${issue.key} | Due: ${dueDate ?? 'N/A'}`);
 
     const today = new Date().toISOString().slice(0, 10);
 
     if (dueDate && dueDate < today) {
-      console.warn(
-        `Remediation due date already passed for ${issue.key}: ${dueDate}`,
-      );
+      console.warn(`Remediation due date already passed for ${issue.key}: ${dueDate}`);
     }
 
     created += 1;

@@ -13,6 +13,7 @@
   "quoteProps": "as-needed",
   "ignorePatterns": [
     "dist/**",
+    "docs/**",
     "node_modules/**",
     "cdk.out/**",
     "coverage/**",
