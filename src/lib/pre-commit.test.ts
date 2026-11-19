@@ -79,13 +79,33 @@ describe('applyExtend', () => {
     expect(merge({ semgrep: { args: ['--x'] } })).toContain('# keep this comment');
   });
 
-  it('appends whole new repos', () => {
+  it('adds whole new repos', () => {
     const out = merge({
       repos: [{ repo: 'https://example.com/x', rev: 'v1', hooks: [{ id: 'x' }] }],
     });
 
     expect(out).toContain('https://example.com/x');
     expect(out).toContain('id: x');
+  });
+
+  it('runs package repos before dev-format and dev-lint, in the order given', async () => {
+    const extend = [
+      'repos:',
+      '  - repo: local',
+      '    hooks: [{ id: generate-a, name: a, entry: a, language: system }]',
+      '  - repo: local',
+      '    hooks: [{ id: generate-b, name: b, entry: b, language: system }]',
+      '',
+    ].join('\n');
+
+    const config = parseDocument(await renderConfig(extend, '.')).toJSON() as {
+      repos: { hooks: { id: string }[] }[];
+    };
+    const order = config.repos.flatMap((repo) => repo.hooks.map((hook) => hook.id));
+
+    expect(order.indexOf('generate-a')).toBe(order.indexOf('generate-b') - 1);
+    expect(order.indexOf('generate-b')).toBe(order.indexOf('dev-format') - 1);
+    expect(order.indexOf('actionlint')).toBeLessThan(order.indexOf('generate-a'));
   });
 
   it('is a no-op for empty extend', () => {

@@ -111,6 +111,15 @@ function asStringList(value: unknown, hookId: string, field: string): string[] {
   );
 }
 
+/** The first of the master's own dev hooks; package repos are inserted before it. */
+const FIRST_DEV_HOOK = 'dev-format';
+
+function repoHasHook(repo: unknown, id: string): boolean {
+  if (!isMap(repo)) return false;
+  const hooks = repo.get('hooks');
+  return isSeq(hooks) && hooks.items.some((hook) => isMap(hook) && hook.get('id') === id);
+}
+
 /** Indexes every hook in the document by its id, so overrides can find it. */
 function indexHooks(doc: Document): Map<string, YAMLMap> {
   const index = new Map<string, YAMLMap>();
@@ -156,7 +165,13 @@ export function applyExtend(doc: Document, extend: unknown): string[] {
       if (!Array.isArray(value)) {
         throw new ExtendError(`${EXTEND_FILE}: "repos" must be a list of hook repos.`);
       }
-      for (const repo of value) repos.add(doc.createNode(repo));
+      // Ahead of the dev-format / dev-lint / dev-typecheck / dev-test block, not
+      // after it: pre-commit runs hooks in file order, so files a package hook
+      // generates are then formatted and linted in the same commit.
+      const nodes = value.map((repo) => doc.createNode(repo));
+      const at = repos.items.findIndex((repo) => repoHasHook(repo, FIRST_DEV_HOOK));
+      if (at === -1) repos.items.push(...nodes);
+      else repos.items.splice(at, 0, ...nodes);
       applied.push(`repos (+${value.length})`);
       continue;
     }
